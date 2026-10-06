@@ -1,12 +1,12 @@
 import logging
 import time
-import inspect
-import h5py
-
+import os
+import harmonypy as hm
 import pandas as pd
 import scanpy as sc
 import numpy as np
 import seaborn as sns
+import ClustAssessPy as ca
 from kennard_stone import train_test_split
 import matplotlib.pyplot as plt
 
@@ -33,15 +33,18 @@ logging.basicConfig(filename=f'../log/{timestamp}-02_preprocessing.log', filemod
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 logging.getLogger("matplotlib.category").setLevel(logging.WARNING)
 
-logging.info("[0] Starting preprocessing") 
+logging.info("------------ Starting preprocessing ------------") 
 
 #------------------------------------
 
 #----------- FILE NAMES -------------
 
-adata_raw_path = Path('../data/processed_data/adata_raw.h5')
+DATA_FOLDER="../data"
+SC_EXP_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_clustered.h5")
+SC_EXP_SAVE_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_preprocessed.h5")
 
-preprocessing_qc_dir = Path("../results/preprocessing") / timestamp preprocessing_qc_dir.mkdir(parents=True, exist_ok=True)
+preprocessing_qc_dir = Path("../results/preprocessing") / timestamp / "qc"
+preprocessing_qc_dir.mkdir(parents=True, exist_ok=True)
 
 #------------------------------------
 
@@ -67,11 +70,21 @@ def is_outlier(adata, metric: str, nmads: int):
 #----------- GLOBAL VARIABLES -------
 
 SEED = 123
-SAMPLING_PCT = 0.7
+SAMPLING_PCT = 0.3
 
 MIN_GENES = 300
 MIN_CELLS = 5
 MT_CUTOFF = 30.0
+
+QC_GROUPS = ["patient", "region", "sample"]
+
+QC_METRICS = [
+    "n_genes_by_counts",
+    "total_counts",
+    "pct_counts_mt",
+]
+
+NUMBER_OF_VARIABLE_GENES = 3000
 
 #------------------------------------
 
@@ -95,7 +108,7 @@ marker_genes['Tuft'] = ['Alox5ap', 'Lrmp', 'Hck', 'Avil', 'Rgs13', 'Ltc4s', 'Trp
 
 logging.info("[1] Loading adata object") 
 
-adata = sc.read_h5ad(adata_raw_path)
+adata = sc.read_h5ad(SC_EXP_FNAME)
 logging.info("AnnData object:\n%s", adata)
 
 logging.info(
@@ -271,23 +284,54 @@ logging.info(
     removed_pct,
 )
 
+#---------- HIGHLY VARIABLE GENES ---------------
+
+logging.info("[5] Highly variable genes") 
+
+sc.pp.highly_variable_genes(
+    adata,
+    n_top_genes=NUMBER_OF_VARIABLE_GENES,
+    flavor="seurat_v3",
+    batch_key="sample"
+)
+
+# get highly variable genes ranked
+highly_var_genes_sorted = adata.var['highly_variable_rank'][~adata.var['highly_variable_rank'].isna()].sort_values().index.to_numpy().tolist()
+
+# get most abundant genes ranked
+most_abundant_genes_sorted = pd.Series(np.asarray(adata.X.sum(axis=0)).flatten(), index=adata.var_names).sort_values(ascending=False).head(NUMBER_OF_VARIABLE_GENES).index.tolist()
+
+logging.info(
+    "Highly variable genes \n%s",
+    highly_var_genes_sorted
+)
+
+logging.info(
+    "Most abundant genes \n%s",
+    most_abundant_genes_sorted
+)
+
+sc.pl.highly_variable_genes(adata, show=False)
+savefig(preprocessing_qc_dir / "highly_variable_genes.jpg")
+
 #---------- NORMALIZATION ---------------
 
-logging.info("[5] Normalization and log transformation") 
+logging.info("[6] Normalization and log transformation") 
 
-# Saving count data
+# saving count data
 adata.layers["counts"] = adata.X.copy()
 
-# Normalizing to median total counts and add Size Factor
-sc.pp.normalize_total(adata)
+# normalizing to median total counts and add size factor
+# - makes data comparable across cells and mitigate the influence of cell-specific biases
+sc.pp.normalize_total(adata, target_sum=1e4)
 adata.obs['size_factors'] = adata.obs.total_counts / np.median(adata.obs.total_counts)
 
-# Logarithmize the data
+# logarithmize the data
 sc.pp.log1p(adata)
 
 #---------- PCA FOR SAMPLING ---------------
 
-logging.info("[6] PCA for random sampling")
+logging.info("[7] PCA for random sampling")
 
 sc.tl.pca(
     adata,
@@ -297,7 +341,7 @@ sc.tl.pca(
 
 #---------- RANDOM SAMPLING ---------------
 
-logging.info("[5] Random sampling") 
+logging.info("[8] Random sampling") 
 
 selected = []
 
@@ -327,40 +371,16 @@ logging.info(
     adata_balanced.obs["sample"].value_counts().sort_index().to_string()
 )
 
-#---------- HIGHLY VARIABLE GENES ---------------
+#---------- DATA SCALING ---------------
 
-logging.info("[6] Highly variable genes") 
+# scale the data 
+# - ensures that the expression levles of genes across cells to have a mean 0 and a variance of 1
+# - high abundance genes do not dominate the signal simply due to their larger numerical values
+sc.pp.scale(adata_balanced)
 
-sc.pp.highly_variable_genes(
-    adata_balanced,
-    n_top_genes=4000,
-    flavor="seurat",
-    batch_key="sample"
-)
+#---------- DIMENSIONALITY REDUCTION PRE BATCH CORRECTION ---------------
 
-logging.info(
-    "Using %d highly variable genes",
-    adata_balanced.var['highly_variable'].sum()
-)
-
-sc.pl.highly_variable_genes(adata_balanced, show=False)
-savefig(preprocessing_qc_dir / "highly_variable_genes.jpg")
-
-# keep highly variable genes
-adata_balanced = adata_balanced[:,adata_balanced.var["highly_variable"]].copy()
-
-#---------- SCALING ------------------
-
-logging.info("[7] Scaling")
-
-sc.pp.scale(
-    adata_balanced,
-    max_value=10
-)
-
-#---------- DIMENSIONALITY REDUCTION ---------------
-
-logging.info("[8] PCA")
+logging.info("[9] PCA")
 
 sc.tl.pca(
     adata_balanced,
@@ -374,26 +394,14 @@ sc.pl.pca_variance_ratio(
     log=True,
     show=False
 )
+savefig(preprocessing_qc_dir / "pca_variance_ratio_pre_batch_correction.jpg")
 
-plt.savefig(
-    preprocessing_qc_dir / "pca_variance_ratio_pre_batch_correction.jpg",
-    dpi=300,
-    bbox_inches="tight"
-)
-plt.close()
-
-sc.pl.pca_overview(
+sc.pl.pca_loadings(
     adata_balanced,
-    color="sample",
+    components='1,2,3',
     show=False
 )
-
-plt.savefig(
-    preprocessing_qc_dir / "pca_overview_pre_batch_correction_sample.jpg",
-    dpi=300,
-    bbox_inches="tight"
-)
-plt.close()
+savefig(preprocessing_qc_dir / "pca_loadings_pre_batch_correction.jpg")
 
 sc.pl.pca(
     adata_balanced,
@@ -402,60 +410,27 @@ sc.pl.pca(
     ncols=2,
     show=False
 )
-
-plt.savefig(
-    preprocessing_qc_dir / "pca_by_sample_pre_batch_correction.jpg",
-    dpi=300,
-    bbox_inches="tight"
-)
-plt.close()
-
-sc.pl.pca_overview(
-    adata_balanced,
-    color="tumor_size",
-    show=False
-)
-
-plt.savefig(
-    preprocessing_qc_dir / "pca_overview_pre_batch_correction_tumor_size.jpg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-plt.close()
-
-#---------- Batch Correction ---------------
-
-logging.info("[9] Batch correction")
-
-sc.pp.combat(adata_balanced, key='sample')
-
-#---------- Dimensionality Reduction ---------------
-
-# PCA
-sc.pp.pca(adata_balanced, n_comps=50, mask_var="highly_variable", svd_solver="arpack")
-sc.pl.pca_variance_ratio(adata_balanced, n_pcs=50, log=True, show=False)
-plt.savefig(
-    preprocessing_qc_dir / "dimensionality_reduction_pca_variance.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
+savefig(preprocessing_qc_dir / "pca_by_sample_pre_batch_correction.jpg")
 
 sc.pl.pca(
     adata_balanced,
-    color="sample",
-    size=1,
+    color=["pct_counts_mt", "n_genes_by_counts"],
+    components=["1,2"],
+    ncols=2,
+    show=False,
+)
+savefig(preprocessing_qc_dir / "pca_by_qc.jpg")
+
+sc.pl.pca(
+    adata_balanced,
+    color=["region", "patient"],
+    components=["1,2"],
     show=False
 )
-plt.savefig(
-    preprocessing_qc_dir / "dimensionality_reduction_pca.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-logging.info("[11A] Completed PCA")
+savefig(preprocessing_qc_dir / "pca_by_metadata_pre_batch_correction.jpg")
 
 # UMAP
-sc.pp.neighbors(adata_balanced)
+sc.pp.neighbors(adata_balanced, n_neighbors=15, n_pcs=30)
 sc.tl.umap(adata_balanced)
 sc.pl.umap(
     adata_balanced,
@@ -463,13 +438,158 @@ sc.pl.umap(
     size=1,
     show=False
 )
-plt.savefig(
-    preprocessing_qc_dir / "dimensionality_reduction_umap.jpeg",
-    dpi=300,
-    bbox_inches="tight"
+savefig(preprocessing_qc_dir / "umap_by_sample_pre_batch_correction.jpeg")
+sc.pl.umap(
+    adata_balanced,
+    color="region",
+    size=1,
+    show=False
 )
-logging.info("[11B] Completed UMAP")
+savefig(preprocessing_qc_dir / "umap_by_region_pre_batch_correction.jpeg")
 
+#---------- BATCH CORRECTION ---------------
+
+logging.info("[10] Batch correction")
+
+ho = hm.run_harmony(
+    adata_balanced.obsm["X_pca"],
+    adata_balanced.obs,
+    "sample"
+)
+
+adata_balanced.obsm["X_pca_harmony"] = ho.Z_corr
+
+# get pca embeddings after batch correction
+pca_embs = adata_balanced.obsm["X_pca_harmony"]
+
+#sc.pp.neighbors(adata_balanced, n_neighbors=10, n_pcs=30)
+#sc.tl.umap(adata_balanced)
+#sc.pl.umap(adata_balanced, color = ['FCER1G','TYROBP', 'cell_label'], legend_loc = 'on data')
+
+
+# ----------- METADATA/SAMPLE COMPOSITION ---------- #
+
+logging.info("[11] Generating metadata QC plots")
+
+for column in QC_GROUPS:
+
+    counts = adata_balanced.obs[column].value_counts()
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.barplot(
+        x=counts.index.astype(str),
+        y=counts.values,
+        legend=False, 
+        color=main_colors[0],
+        ax=ax
+    )
+    ax.set_xlabel(column.capitalize())
+    ax.set_ylabel("Number of barcodes")
+    ax.tick_params(axis="x", rotation=45)
+    fig.tight_layout()
+    savefig(
+        preprocessing_qc_dir / f"{column}_barcode_counts.jpg"
+    )
+
+# ----------- QC METRICS BY GROUP ---------- #
+
+logging.info("[112] Generating grouped QC plots")
+
+for group in QC_GROUPS:
+
+    # violin plots
+    sc.pl.violin(
+        adata_balanced,
+        QC_METRICS,
+        groupby=group,
+        stripplot=False,
+        multi_panel=True,
+        rotation=45,
+        show=False
+    )
+    plt.savefig(
+        preprocessing_qc_dir / f"qc_violin_{group}.jpg",
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close("all")
+
+    # log-scale count distribution
+    sc.pl.violin(
+        adata_balanced,
+        ["n_genes_by_counts", "total_counts"],
+        groupby=group,
+        stripplot=False,
+        multi_panel=True,
+        log=True,
+        rotation=45,
+        show=False
+    )
+    plt.savefig(
+        preprocessing_qc_dir / f"qc_violin_{group}_log.jpg",
+        dpi=300,
+        bbox_inches="tight",
+    )
+    plt.close("all")
+
+# ----------- QC RELATIONSHIPS ---------- #
+
+logging.info("[13] Generating QC relationship plots")
+
+# counts vs detected genes
+sc.pl.scatter(
+    adata_balanced,
+    x="total_counts",
+    y="n_genes_by_counts",
+    color="pct_counts_mt",
+    alpha=0.6,
+    size=2,
+    show=False
+)
+savefig(
+    preprocessing_qc_dir / "qc_scatter_counts_vs_genes.jpg"
+)
+
+#---------- DIMENSIONALITY REDUCTION ---------------
+
+logging.info("[14] Dimensionality reduction")
+
+'''
+# PCA
+sc.pp.pca(adata_balanced, n_comps=50, mask_var="highly_variable", svd_solver="arpack")
+sc.pl.pca_variance_ratio(adata_balanced, n_pcs=50, log=True, show=False)
+savefig(preprocessing_qc_dir / "dimensionality_reduction_pca_variance.jpg")
+
+sc.pl.pca(
+    adata_balanced,
+    color="sample",
+    size=1,
+    show=False
+)
+savefig(preprocessing_qc_dir / "dimensionality_reduction_pca.jpg")
+logging.info("[12A] Completed PCA")
+'''
+
+# UMAP
+sc.pp.neighbors(adata_balanced, n_neighbors=15, n_pcs=30, use_rep="X_pca_harmony")
+sc.tl.umap(adata_balanced)
+sc.pl.umap(
+    adata_balanced,
+    color="sample",
+    size=1,
+    show=False
+)
+savefig(preprocessing_qc_dir / "umap_by_sample_post_batch_correction.jpeg")
+sc.pl.umap(
+    adata_balanced,
+    color="region",
+    size=1,
+    show=False
+)
+savefig(preprocessing_qc_dir / "umap_by_region_post_batch_correction.jpeg")
+logging.info("[12B] Completed UMAP")
+
+'''
 # TSNE
 sc.tl.tsne(adata_balanced)
 sc.pl.tsne(
@@ -478,12 +598,8 @@ sc.pl.tsne(
     size=1,
     show=False
 ) 
-plt.savefig(
-    preprocessing_qc_dir / "dimensionality_reduction_tsne.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-logging.info("[11C] Completed TSNE")
+savefig(preprocessing_qc_dir / "dimensionality_reduction_tsne.jpg")
+logging.info("[12C] Completed TSNE")
 
 # Diffusion Map
 sc.tl.diffmap(adata_balanced)
@@ -493,12 +609,8 @@ sc.pl.diffmap(
     size=1,
     show=False
 ) 
-plt.savefig(
-    preprocessing_qc_dir / "dimensionality_reduction_diffusion_map.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-logging.info("[11D] Completed Diffusion Map")
+savefig(preprocessing_qc_dir / "dimensionality_reduction_diffusion_map.jpg")
+logging.info("[12D] Completed Diffusion Map")
 
 # Graph
 sc.tl.draw_graph(adata_balanced)
@@ -508,107 +620,33 @@ sc.pl.draw_graph(
     size=1,
     show=False
 ) 
-plt.savefig(
-    preprocessing_qc_dir / "dimensionality_reduction_graph.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-logging.info("[11E] Completed Graph")
-
-
-logging.info("[11] Compelted Dimensionality Reduction")
-
-quit()
-
-#---------- Cell Cycle Scoring ---------
-
-# to be continued. 
-
-#---------- Clustering ---------------
-
-sc.tl.leiden(adata_balanced, flavor="igraph", n_iterations=2)
-sc.pl.umap(adata_balanced, color=["leiden"], show=False)
-plt.savefig(
-    clustering_dir / "umap_leiden.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-logging.info("Cluster Counts:\n%s", adata_balanced.obs['leiden'].value_counts())
-
-logging.info("[12] Compelted Clustering")
-
-#---------- Re-Assess QC ---------------
-
-sc.pl.umap(adata_balanced, color=['region', 'patient', 'total_counts'], show=False)
-plt.savefig(
-    clustering_dir / "umap_region_counts.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-sc.pl.umap(adata_balanced, color=['log1p_total_counts', 'pct_counts_mt'], show=False)
-plt.savefig(
-    clustering_dir / "umap_log_pct_mt.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-sc.pl.umap(
-    adata_balanced,
-    color=["leiden", "log1p_total_counts", "pct_counts_mt", "log1p_n_genes_by_counts"],
-    wspace=0.5,
-    ncols=2,
-    show=False
-)
-plt.savefig(
-    clustering_dir / "umap_cell_filtering.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-logging.info("[13] Completed Re-Assess Quality Control ")
-
-#---------- Marker Genes & Cluster Annotation ---------------
-
-sc.tl.rank_genes_groups(adata_balanced, groupby='leiden', key_added='rank_genes_leiden')
-
-sc.pl.rank_genes_groups(adata_balanced, key='rank_genes_leiden', groups=['0','1','2'], fontsize=12, show=False)
-plt.savefig(
-    clustering_dir / "rank_genes_groups_1.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-sc.pl.rank_genes_groups(adata_balanced, key='rank_genes_leiden', groups=['3','4','5'], fontsize=12, show=False)
-plt.savefig(
-    clustering_dir / "rank_genes_groups_2.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-sc.pl.rank_genes_groups(adata_balanced, key='rank_genes_leiden', groups=['6', '7', '8'], fontsize=12, show=False)
-plt.savefig(
-    clustering_dir / "rank_genes_groups_3.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
-cell_annotation = sc.tl.marker_gene_overlap(adata_balanced, marker_genes, key='rank_genes_leiden')
-logging.info("Cell Annotation\n%s", cell_annotation)
-
-cell_annotation_norm = sc.tl.marker_gene_overlap(adata_balanced, marker_genes, key='rank_genes_leiden', normalize='reference')
-sns.heatmap(cell_annotation_norm, cbar=False, annot=True)
-plt.savefig(
-    clustering_dir / "cell_annotation_heatmap.jpeg",
-    dpi=300,
-    bbox_inches="tight"
-)
-
+savefig(preprocessing_qc_dir / "dimensionality_reduction_graph.jpg")
+logging.info("[12E] Completed Graph")
 '''
-# Saving the Data in .h5 file
 
-with h5py.File(save_path, 'w') as f_normalized:
-    f_normalized.create_dataset('X', data=adata_balanced.X, compression="gzip", compression_opts=9)
-    y = np.array(adata_balanced.obs_names, dtype='S')
-    f_normalized.create_dataset('Y', data=y, compression="gzip", compression_opts=9)
-
+#---------- FEATURE SELECTION & STABILITY ---------------
 '''
+data_matrix = pd.DataFrame(
+        adata_balanced.X,
+        index=adata_balanced.obs_names,
+        columns=adata_balanced.var_names
+    )
+
+feature_stability_HV = ca.assess_feature_stability(data_matrix = data_matrix, feature_set = highly_var_genes_sorted, steps = [500, 1000, 1500, 2000, 2500, 3000], feature_type = 'HV', resolution = [0.3, 0.5, 0.7], n_repetitions=50, algorithm='leiden', ncores=1)
+feature_stability_MA = ca.assess_feature_stability(data_matrix = data_matrix, feature_set = most_abundant_genes_sorted, steps = [500, 1000, 1500, 2000, 2500, 3000], feature_type = 'MA', resolution = [0.3, 0.5, 0.7], n_repetitions=50, algorithm='leiden', ncores=1)
+ca.plot_feature_overall_stability_boxplot([feature_stability_HV, feature_stability_MA])
+ca.plot_feature_overall_stability_incremental([feature_stability_HV, feature_stability_MA])
+'''
+
+# ============================================================
+# ----------------------- SAVE DATA --------------------------
+# ============================================================
+
+logging.info("[13] Saving adata object as .h5 file")
+
+adata_balanced.write_h5ad(
+    SC_EXP_SAVE_FNAME,
+    compression="gzip",
+)
+
+logging.info("------------ Completed Preprocessing ------------") 

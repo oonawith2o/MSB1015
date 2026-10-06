@@ -1,19 +1,19 @@
-2026-10-04 11:37:10,418 - INFO - [0] Starting preprocessing
-2026-10-04 11:37:10,418 - INFO - [1] Loading adata object
-2026-10-04 11:37:17,497 - INFO - AnnData object:
+2026-10-04 21:04:37,084 - INFO - ------------ Starting preprocessing ------------
+2026-10-04 21:04:37,084 - INFO - [1] Loading adata object
+2026-10-04 21:04:40,921 - INFO - AnnData object:
 AnnData object with n_obs × n_vars = 81683 × 36601
     obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb'
     var: 'mt', 'ribo', 'hb', 'n_cells_by_counts', 'mean_counts', 'log1p_mean_counts', 'pct_dropout_by_counts', 'total_counts', 'log1p_total_counts'
     uns: 'patient_colors', 'region_colors', 'sample_colors'
     layers: None (.X)
-2026-10-04 11:37:17,508 - INFO - Initial dimensions: 81683 cells x 36601 genes
-2026-10-04 11:37:17,508 - INFO - [2] Filtering Cells and Genes
-2026-10-04 11:37:27,584 - INFO - Genes: 36601 --> 27792 (removed: 8809, 24.068%)
-2026-10-04 11:37:36,479 - INFO - Cells: 81683 --> 78153 (removed: 3530, 4.322%)
-2026-10-04 11:37:36,479 - INFO - [3] Filtering cells with mitochondrial percentage
-2026-10-04 11:37:38,479 - INFO - Cells after mitochondrial filtering: 78153 --> 71442 (removed: 6711, 8.587%)
-2026-10-04 11:37:38,479 - INFO - [4] Doublet detection
-2026-10-04 11:45:37,475 - INFO - Scrublet score distribution:
+2026-10-04 21:04:40,922 - INFO - Initial dimensions: 81683 cells x 36601 genes
+2026-10-04 21:04:40,922 - INFO - [2] Filtering Cells and Genes
+2026-10-04 21:04:44,679 - INFO - Genes: 36601 --> 27792 (removed: 8809, 24.068%)
+2026-10-04 21:04:49,500 - INFO - Cells: 81683 --> 78153 (removed: 3530, 4.322%)
+2026-10-04 21:04:49,501 - INFO - [3] Filtering cells with mitochondrial percentage
+2026-10-04 21:04:50,791 - INFO - Cells after mitochondrial filtering: 78153 --> 71442 (removed: 6711, 8.587%)
+2026-10-04 21:04:50,791 - INFO - [4] Doublet detection
+2026-10-04 21:11:21,474 - INFO - Scrublet score distribution:
 count    71442.000000
 mean         0.059901
 std          0.048246
@@ -24,8 +24,8 @@ min          0.002020
 99%          0.264516
 99.9%        0.415385
 max          0.634615
-2026-10-04 11:45:38,607 - INFO - Predicted doublets: 6 / 71442 (0.008%)
-2026-10-04 11:45:38,620 - INFO - Doublet summary by sample:
+2026-10-04 21:11:22,283 - INFO - Predicted doublets: 6 / 71442 (0.008%)
+2026-10-04 21:11:22,293 - INFO - Doublet summary by sample:
         n_doublets  n_cells  doublet_pct
 sample                                  
 P2_L             0     7901     0.000000
@@ -36,12 +36,12 @@ P6_L             3     3985     0.075282
 P6_T             0     7150     0.000000
 P7_L             1    11114     0.008998
 P7_T             0    13541     0.000000
-2026-10-04 11:45:41,747 - INFO - Cells after doublet filtering: 71442 --> 71436 (removed: 6, 0.008%)
-2026-10-04 11:45:41,748 - INFO - [5] Normalization and log transformation
-2026-10-04 11:45:45,547 - INFO - [6] PCA for random sampling
-2026-10-04 11:46:19,889 - INFO - [5] Random sampling
-2026-10-04 11:46:19,891 - INFO - Selecting 2,787 barcodes per sample
-2026-10-04 11:48:43,035 - INFO - Check balanced data
+2026-10-04 21:11:23,527 - INFO - Cells after doublet filtering: 71442 --> 71436 (removed: 6, 0.008%)
+2026-10-04 21:11:23,528 - INFO - [5] Normalization and log transformation
+2026-10-04 21:11:28,175 - INFO - [6] PCA for random sampling
+2026-10-04 21:12:03,198 - INFO - [5] Random sampling
+2026-10-04 21:12:03,200 - INFO - Selecting 2,787 barcodes per sample
+2026-10-04 21:13:55,788 - INFO - Check balanced data
 sample
 P2_L    2787
 P2_T    2787
@@ -51,14 +51,15 @@ P6_L    2787
 P6_T    2787
 P7_L    2787
 P7_T    2787
-2026-10-04 11:48:43,040 - INFO - [6] Highly variable genes
-2026-10-04 11:48:52,021 - INFO - Using 4000 highly variable genes
-2026-10-04 11:48:54,135 - INFO - [7] Scaling
-2026-10-04 11:48:58,119 - INFO - [8] PCA
-2026-10-04 11:49:14,265 - INFO - [9] Batch correction
-2026-10-04 11:49:43,037 - INFO - [11A] Completed PCA
-2026-10-04 11:50:26,357 - INFO - [11B] Completed UMAP
-2026-10-04 11:51:49,606 - INFO - [11C] Completed TSNE
-2026-10-04 11:51:54,358 - INFO - [11D] Completed Diffusion Map
-2026-10-04 12:06:54,387 - INFO - [11E] Completed Graph
-2026-10-04 12:06:54,387 - INFO - [11] Compelted Dimensionality Reduction
+2026-10-04 21:13:55,788 - INFO - [6] Highly variable genes
+2026-10-04 21:13:58,840 - INFO - Using 4000 highly variable genes
+2026-10-04 21:13:59,706 - INFO - [8] PCA
+2026-10-04 21:14:04,574 - INFO - [9] Batch correction
+2026-10-04 21:14:20,053 - INFO - [11A] Completed PCA
+2026-10-04 21:14:49,033 - INFO - [11B] Completed UMAP
+2026-10-04 21:16:10,732 - INFO - [11C] Completed TSNE
+2026-10-04 21:16:12,873 - INFO - [11D] Completed Diffusion Map
+2026-10-04 21:24:24,815 - INFO - [11E] Completed Graph
+2026-10-04 21:24:24,816 - INFO - [11] Compelted Dimensionality Reduction
+2026-10-04 21:24:24,816 - INFO - [12] Saving adata object as .h5 file
+2026-10-04 21:25:13,388 - INFO - ------------ Completed Preprocessing ------------
