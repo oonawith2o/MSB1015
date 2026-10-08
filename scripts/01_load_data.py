@@ -41,7 +41,7 @@ logging.info("------------ Starting quality control ------------")
 sc_matrix_path = "../data/GSE225600_sc_matrix.mtx/matrix.mtx"
 sc_features_path = "../data/GSE225600_sc_features.tsv/GSE225600_sc_features.tsv"
 sc_barcodes_path = "../data/GSE225600_sc_barcodes.tsv/GSE225600_sc_barcodes.tsv"
-patients_path = "../data/supplementary_data/advs5030-sup-0002-datasets1.xlsx"
+patients_path = "../data/supplementary_data/ADVS-10-2205395-s008.xlsx"
 save_path = '../data/processed_data/adata_raw.h5'
 
 preprocessing_raw_dir = Path("../results/preprocessing") / timestamp / "raw"
@@ -278,6 +278,31 @@ logging.info("Lymph QC statistics\n%s", adata[adata.obs["region"] == "L"].obs[["
 # ----------- METADATA/SAMPLE COMPOSITION ---------- #
 
 logging.info("[4] Generating metadata QC plots")
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4), dpi=300, sharey=True)
+x = adata.obs['n_genes']
+x_lowerbound = 1500
+x_upperbound = 2000
+nbins=100
+
+sns.histplot(x, ax=ax1, norm_hist=True, bins=nbins)
+sns.histplot(x, ax=ax2, norm_hist=True, bins=nbins)
+sns.histplot(x, ax=ax3, norm_hist=True, bins=nbins)
+
+ax2.set_xlim(0,x_lowerbound)
+ax3.set_xlim(x_upperbound, adata.obs['n_genes'].max() )
+
+for ax in (ax1,ax2,ax3): 
+  ax.set_xlabel('')
+
+ax1.title.set_text('n_genes')
+ax2.title.set_text('n_genes, lower bound')
+ax3.title.set_text('n_genes, upper bound')
+
+fig.text(-0.01, 0.5, 'Frequency', ha='center', va='center', rotation='vertical', size='x-large')
+fig.text(0.5, 0.0, 'Genes expressed per cell', ha='center', va='center', size='x-large')
+
+fig.tight_layout()
 
 for column in QC_GROUPS:
 

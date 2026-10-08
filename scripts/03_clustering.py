@@ -49,9 +49,28 @@ def savefig(path):
     plt.savefig(
         path,
         dpi=300,
-        bbox_inches="tight",
+        bbox_inches="tight"
     )
     plt.close()
+
+def remove_none_values(obj):
+    if isinstance(obj, dict):
+        for key in list(obj.keys()):
+            if obj[key] is None:
+                del obj[key]
+            else:
+                remove_none_values(obj[key])
+
+
+def write_legacy_h5ad(adata, path):
+    adata_export = adata.copy()
+
+    remove_none_values(adata_export.uns)
+
+    adata_export.write_h5ad(
+        path,
+        compression="gzip"
+    )
 
 #------------------------------------
 
@@ -307,10 +326,9 @@ savefig(clustering_dir / "umap_with_cell_type.jpg")
 
 logging.info("[5] Saving adata object as .h5 file")
 
-adata.write_h5ad(
-    save_path,
-    compression="gzip",
-)
+adata_export = adata.copy()
+
+write_legacy_h5ad(adata_export, save_path)
 
 logging.info("------------ Completed Clustering ------------") 
 
