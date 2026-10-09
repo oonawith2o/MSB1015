@@ -1,16 +1,15 @@
 import logging
 import time
 import math
-import h5py
 
 import pandas as pd
 import scanpy as sc
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 from pathlib import Path
-from scipy.stats import median_abs_deviation
 
 timestamp = time.strftime('%Y%m%d')
 
@@ -19,8 +18,35 @@ timestamp = time.strftime('%Y%m%d')
 lab_size = 25
 tick_size = 15
 
-main_colors = ["#0E2841", "#4E95D9", "#CBCBCB", "#F0F0F0"]
-accent_color = "#FFC000"
+MAIN_COLOR = "#0E2841"
+ACCENT_COLOR = "#4E95D9"
+
+NAVY_WHITE = LinearSegmentedColormap.from_list(
+    "navy_white",
+    ["#0E2841", "#FFFFFF"]
+)
+
+COLOR_PALETTE = sns.color_palette(
+    [NAVY_WHITE(x) for x in np.linspace(0,1,10)],
+    as_cmap=True
+)
+
+sns.set_theme(
+    style="whitegrid",
+    context="notebook",
+    font_scale=1.05,
+    rc={
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "axes.titleweight": "bold",
+        "axes.labelcolor": "#263746",
+        "xtick.color": "#465563",
+        "ytick.color": "#465563",
+        "grid.color": "#D9E1E8",
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.6,
+    }
+)
 
 #------------------------------------
 
@@ -59,6 +85,47 @@ def savefig(path):
     )
     plt.close()
 
+def style_pca_figure(fig, adata_pca):
+    fig.set_size_inches(*FIGSIZE)
+
+    variance = adata_pca.uns["pca"]["variance_ratio"] * 100
+
+    pca_axes = [
+        ax for ax in fig.axes
+        if ax.get_visible()
+        and ax.get_xlabel().startswith("PC")
+        and ax.get_ylabel().startswith("PC")
+    ]
+
+    if len(pca_axes) != len(COMPONENT_PAIRS):
+        pca_axes = [
+            ax for ax in fig.axes
+            if ax.get_visible() and ax.has_data()
+        ][:len(COMPONENT_PAIRS)]
+
+    for ax, (pc_x, pc_y) in zip(pca_axes, COMPONENT_PAIRS):
+        ax.set_title("")
+
+        ax.set_xlabel(
+            f"PC{pc_x + 1} ({variance[pc_x]:.2f}%)",
+            fontsize=12,
+            labelpad=8,
+        )
+        ax.set_ylabel(
+            f"PC{pc_y + 1} ({variance[pc_y]:.2f}%)",
+            fontsize=12,
+            labelpad=8,
+        )
+
+        ax.tick_params(axis="both", labelsize=9)
+        ax.grid(axis="both", alpha=0.35, linewidth=0.6)
+        ax.set_axisbelow(True)
+
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+
+    return pca_axes
+
 #------------------------------------
 
 #----------- GLOBAL VARIABLES -------
@@ -71,6 +138,12 @@ QC_METRICS = [
     "pct_counts_mt",
 ]
 
+QC_METRICS_NAMES = {
+    "n_genes_by_counts": "Number of Genes",
+    "total_counts": "Number of Counts",
+    "pct_counts_mt": "Percentage of Mitochondrial Counts"
+}
+
 QC_PERCENTILES = [
     0.01, 0.05, 0.10, 0.25, 0.50,
     0.75, 0.90, 0.95, 0.99
@@ -81,9 +154,9 @@ QC_PERCENTILES = [
 # - at least 3 detected cells per gene
 # - less than 20% mitochondrial counts
 
-MIN_GENES = 200
-MIN_CELLS = 3
-MT_CUTOFF = 20
+ST_MIN_CELLS = 3
+ST_MIN_GENES = 200
+ST_MT_CUTOFF = 20.0
 
 MT_CUTOFFS = [15, 20, 25, 30]
 
@@ -99,8 +172,12 @@ TARGET_SAMPLES = [
     "P6_L",
 ]
 
-#------------------------------------
+PCA_COMPONENTS = ["1,2", "3,4", "1,4", "2,3"]
+COMPONENT_PAIRS = [(0, 1), (2, 3), (0, 3), (1, 2)]
 
+FIGSIZE = (15, 4.5)
+
+#------------------------------------
 
 # ============================================================
 # ------------------------- MAIN -----------------------------
@@ -234,75 +311,9 @@ logging.info("Overall QC statistics\n%s",adata.obs[["total_counts", "n_genes_by_
 logging.info("Tumor QC statistics\n%s", adata[adata.obs["region"] == "T"].obs[["total_counts", "n_genes_by_counts", "pct_counts_mt", "pct_counts_ribo"]].describe(percentiles=[.01, .5, .99]))
 logging.info("Lymph QC statistics\n%s", adata[adata.obs["region"] == "L"].obs[["total_counts", "n_genes_by_counts", "pct_counts_mt", "pct_counts_ribo"]].describe(percentiles=[.01, .5, .99]))
 
-'''
-1. Metadata / Sample Composition
-   ├── patient_cell_counts
-   ├── region_cell_counts
-   └── sample_cell_counts
-
-2. QC Metric Distributions
-   ├── overall distributions
-   └── log-scale distributions
-
-3. QC Metrics by Group
-   ├── patient violins
-   ├── region violins
-   └── sample violins
-
-4. QC Relationships
-   ├── all cells: counts vs genes
-   ├── all cells: counts vs MT
-   └── all cells: genes vs MT
-
-5. QC Relationships by Group
-   ├── patient_qc_scatter.jpg
-   ├── region_qc_scatter.jpg
-   └── sample_qc_scatter.jpg
-
-6. Sample-level QC
-   ├── counts by sample
-   └── MT by sample
-
-7. Tumor / Lymph QC
-   ├── tumor by patient
-   └── lymph by patient
-
-8. Filtering Diagnostics
-   ├── genes per cell
-   ├── cells per gene
-   ├── mitochondrial percentage
-   └── filtering QC space
-
-'''
-
 # ----------- METADATA/SAMPLE COMPOSITION ---------- #
 
 logging.info("[4] Generating metadata QC plots")
-
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4), dpi=300, sharey=True)
-x = adata.obs['n_genes']
-x_lowerbound = 1500
-x_upperbound = 2000
-nbins=100
-
-sns.histplot(x, ax=ax1, norm_hist=True, bins=nbins)
-sns.histplot(x, ax=ax2, norm_hist=True, bins=nbins)
-sns.histplot(x, ax=ax3, norm_hist=True, bins=nbins)
-
-ax2.set_xlim(0,x_lowerbound)
-ax3.set_xlim(x_upperbound, adata.obs['n_genes'].max() )
-
-for ax in (ax1,ax2,ax3): 
-  ax.set_xlabel('')
-
-ax1.title.set_text('n_genes')
-ax2.title.set_text('n_genes, lower bound')
-ax3.title.set_text('n_genes, upper bound')
-
-fig.text(-0.01, 0.5, 'Frequency', ha='center', va='center', rotation='vertical', size='x-large')
-fig.text(0.5, 0.0, 'Genes expressed per cell', ha='center', va='center', size='x-large')
-
-fig.tight_layout()
 
 for column in QC_GROUPS:
 
@@ -312,17 +323,29 @@ for column in QC_GROUPS:
     sns.barplot(
         x=counts.index.astype(str),
         y=counts.values,
+        hue=counts.index.astype(str),
+        palette=COLOR_PALETTE,
+        alpha=0.95,
         legend=False, 
-        color=main_colors[0],
         ax=ax
     )
-    ax.set_xlabel(column.capitalize())
-    ax.set_ylabel("Number of barcodes")
-    ax.tick_params(axis="x", rotation=45)
+    for container in ax.containers:
+        ax.bar_label(
+            container,
+            fmt="%.0f",
+            padding=4,
+            fontsize=9,
+            color="#263746"
+        )
+    ax.set_xlabel(column.replace("_", " ").capitalize(), fontsize=12, labelpad=10)
+    ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
+    ax.tick_params(axis="x", labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", linestyle="--", alpha=0.7)
+    ax.grid(axis="x", visible=False)
+    ax.set_ylim(0, counts.max() * 1.15)
     fig.tight_layout()
-    savefig(
-        preprocessing_raw_dir / f"{column}_barcode_counts.jpg"
-    )
+    savefig(preprocessing_raw_dir / f"barcode_distribution_by_{column}.jpg")
 
 # ----------- QC METRIC DISTRIBUTION ---------- #
 
@@ -334,16 +357,18 @@ for ax, metric in zip(axes, QC_METRICS):
     sns.histplot(
         adata.obs[metric],
         bins=100,
-        color=main_colors[0],
-        ax=ax,
+        color=MAIN_COLOR,
+        alpha=0.95,
+        ax=ax
     )
-    ax.set_title(metric)
-    ax.set_xlabel(metric)
-    ax.set_ylabel("Number of barcodes")
+    ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=12, labelpad=10)
+    ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
+    ax.tick_params(axis="x", bottom=True, labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", visible=False)
 fig.tight_layout()
-savefig(
-    preprocessing_raw_dir/ "qc_metric_distributions.jpg"
-)
+savefig(preprocessing_raw_dir / "qc_metric_distribution_summary.jpg")
 
 # log-scale distribution
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))
@@ -351,104 +376,285 @@ for ax, metric in zip(axes, ["total_counts", "n_genes_by_counts"]):
     sns.histplot(
         adata.obs[metric],
         bins=100,
-        log_scale=True,
-        color=main_colors[0],
-        ax=ax,
+        log_scale=True, 
+        color=MAIN_COLOR,
+        alpha=0.95,
+        ax=ax
     ) 
-    ax.set_title(f"{metric} (log scale)")
-    ax.set_xlabel(metric)
-    ax.set_ylabel("Number of barcodes")
+    ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=12, labelpad=10)
+    ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
+    ax.tick_params(axis="x", bottom=True, labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", visible=False)
 fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "qc_metric_distributions_log.jpg"
+savefig(preprocessing_raw_dir / "qc_metric_distributions_summary_log.jpg")
+
+# three-panel summary plots - genes expressed
+x = adata.obs["n_genes_by_counts"].dropna()
+nbins = 1000
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4), dpi=300, sharey=True)
+axes = (ax1, ax2, ax3)
+sns.histplot(
+    x=x,
+    bins=nbins,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax1
 )
+sns.histplot(
+    x=x,
+    bins=nbins,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax2,
+)
+ax2.set_xlim(0, 400)
+sns.histplot(
+    x=x,
+    bins=nbins,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax3,
+)
+ax3.set_xlim(3000, 6000)
+titles = [
+    "Full Distribution",
+    "Lower Range (0-400)",
+    "Upper Range (3,000-6,000)",
+]
+for ax, title in zip(axes, titles):
+    ax.set_title(
+        title,
+        fontsize=11,
+        fontweight="bold",
+        color=MAIN_COLOR,
+        loc="center",
+        pad=12,
+    )
+    ax.set_xlabel("")
+    ax.tick_params(axis="x", bottom=True, labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", visible=False)
+    sns.despine(ax=ax, left=True, bottom=False)
+fig.supxlabel(
+    "Genes Expressed per Barcode",
+    fontsize=12,
+    color="#263746",
+    y=-0.02
+)
+savefig(preprocessing_raw_dir / f"qc_metric_distributions_n_genes_by_counts_summary.jpg")
+
+# three-panel summary plots - mitochondrial percentage
+x = adata.obs["pct_counts_mt"].dropna()
+nbins = 1000
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4), dpi=300, sharey=True)
+axes = (ax1, ax2, ax3)
+sns.histplot(
+    x=x,
+    bins=nbins,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax1
+)
+sns.histplot(
+    x=x,
+    bins=nbins,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax2,
+)
+ax2.set_xlim(0, 10)
+sns.histplot(
+    x=x,
+    bins=nbins,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax3,
+)
+ax3.set_xlim(30, 50)
+titles = [
+    "Full Distribution",
+    "Lower Range (0-10%)",
+    "Upper Range (30-50%)",
+]
+for ax, title in zip(axes, titles):
+    ax.set_title(
+        title,
+        fontsize=11,
+        fontweight="bold",
+        color=MAIN_COLOR,
+        loc="center",
+        pad=12,
+    )
+    ax.set_xlabel("")
+    ax.tick_params(axis="x", bottom=True, labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", visible=False)
+    sns.despine(ax=ax, left=True, bottom=False)
+fig.supxlabel(
+    "Mitochondrial Read Fraction per Barcode",
+    fontsize=12,
+    color="#263746",
+    y=-0.02
+)
+fig.tight_layout()
+savefig(preprocessing_raw_dir / f"qc_metric_distributions_pct_counts_mt_summary.jpg")
 
 # ----------- QC METRICS BY GROUP ---------- #
 
 logging.info("[6] Generating grouped QC plots")
 
+COUNT_METRICS = ["total_counts", "n_genes_by_counts"]
+
 for group in QC_GROUPS:
 
-    # violin plots
-    sc.pl.violin(
-        adata,
-        QC_METRICS,
-        groupby=group,
-        stripplot=False,
-        multi_panel=True,
-        rotation=45,
-        show=False
+    n_metrics = len(QC_METRICS)
+    fig, axes = plt.subplots(
+        1,
+        n_metrics,
+        figsize=(5 * n_metrics, 4),
+        squeeze=False,
     )
-    plt.savefig(
-        preprocessing_raw_dir / f"qc_violin_{group}.jpg",
-        dpi=300,
-        bbox_inches="tight",
-    )
-    plt.close("all")
+    axes = axes.ravel()
+    fig.set_dpi(300)
 
-    # log-scale count distribution
-    sc.pl.violin(
-        adata,
-        ["n_genes_by_counts", "total_counts"],
-        groupby=group,
-        stripplot=False,
-        multi_panel=True,
-        log=True,
-        rotation=45,
-        show=False
+    for ax, metric in zip(axes, QC_METRICS):
+
+        plot_data = adata.obs[[group, metric]].dropna().copy()
+
+        if metric in COUNT_METRICS:
+            upper = plot_data[metric].quantile(0.99)
+            plot_data = plot_data[plot_data[metric] <= upper]
+
+        sns.violinplot(
+            data=plot_data,
+            x=group,
+            y=metric,
+            palette=COLOR_PALETTE,
+            linewidth=1, 
+            linecolor="k",
+            inner = None,
+            ax=ax
+        )
+
+        if metric in COUNT_METRICS:
+            ax.set_yscale("log")
+            ax.set_ylim(bottom=1)
+
+        ax.set_xlabel("")
+        ax.set_ylabel(
+            QC_METRICS_NAMES.get(metric, "Value"),
+            fontsize=12,
+            labelpad=10
+        )
+        ax.tick_params(axis="x", bottom=True, labelsize=9)
+        ax.tick_params(axis="y", labelsize=9)
+        ax.grid(axis="y", alpha=0.7)
+        ax.grid(axis="x", visible=False)
+
+    fig.suptitle(
+        f"QC Metrics by {group.replace('_', ' ').title()}",
+        fontsize=14,
+        fontweight="bold",
+        color=MAIN_COLOR,
+        y=1.03,
     )
-    plt.savefig(
-        preprocessing_raw_dir / f"qc_violin_{group}_log.jpg",
-        dpi=300,
-        bbox_inches="tight",
-    )
-    plt.close("all")
+    fig.tight_layout()
+    savefig(preprocessing_raw_dir / f"qc_violin_{group}.jpg")
 
 # ----------- QC RELATIONSHIPS ---------- #
 
 logging.info("[7] Generating QC relationship plots")
 
-# counts vs detected genes
-sc.pl.scatter(
-    adata,
-    x="total_counts",
-    y="n_genes_by_counts",
-    color="pct_counts_mt",
-    alpha=0.6,
-    size=2,
-    show=False
-)
-savefig(
-    preprocessing_raw_dir / "qc_scatter_counts_vs_genes.jpg"
-)
+scatter_configs = [
+    {
+        "x": "total_counts",
+        "y": "n_genes_by_counts",
+        "color": "pct_counts_mt",
+        "filename": "qc_scatter_counts_vs_genes.jpg",
+    },
+    {
+        "x": "total_counts",
+        "y": "pct_counts_mt",
+        "color": "n_genes_by_counts",
+        "filename": "qc_scatter_counts_vs_mt.jpg",
+    },
+    {
+        "x": "n_genes_by_counts",
+        "y": "pct_counts_mt",
+        "color": "total_counts",
+        "filename": "qc_scatter_genes_vs_mt.jpg",
+    }
+]
 
-# counts vs mitochondrial percentage
-sc.pl.scatter(
-    adata,
-    x="total_counts",
-    y="pct_counts_mt",
-    color="n_genes_by_counts",
-    alpha=0.6,
-    size=2,
-    show=False
-)
-savefig(
-    preprocessing_raw_dir / "qc_scatter_counts_vs_mt.jpg"
-)
+for config in scatter_configs:
+    fig, ax = plt.subplots(figsize=(5, 4))
 
-# genes vs. mitochondrial percentage
-sc.pl.scatter(
-    adata,
-    x="n_genes_by_counts",
-    y="pct_counts_mt",
-    color="total_counts",
-    alpha=0.6,
-    size=2,
-    show=False
-)
-savefig(
-    preprocessing_raw_dir / "qc_scatter_genes_vs_mt.jpg"
-)
+    x = adata.obs[config["x"]]
+    y = adata.obs[config["y"]]
+    c = adata.obs[config["color"]]
+
+    valid = x.notna() & y.notna() & c.notna()
+
+    # Scatter plot
+    scatter = ax.scatter(
+        x[valid],
+        y[valid],
+        c=c[valid],
+        cmap=NAVY_WHITE,
+        s=2,
+        linewidths=0,
+    )
+
+    ax.set_xlabel(
+        QC_METRICS_NAMES.get(config["x"], config["x"]),
+        fontsize=12,
+        labelpad=10,
+    )
+
+    ax.set_ylabel(
+        QC_METRICS_NAMES.get(config["y"], config["y"]),
+        fontsize=12,
+        labelpad=10,
+    )
+
+    ax.tick_params(axis="x", labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", alpha=0.7)
+    ax.set_axisbelow(True)
+
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    cbar = fig.colorbar(
+        scatter,
+        ax=ax,
+        location="right",
+        pad=0.12,
+        fraction=0.05,
+    )
+    cbar.set_label(
+        QC_METRICS_NAMES.get(config["color"], config["color"]),
+        fontsize=10,
+        labelpad=8,
+    )
+    cbar.ax.tick_params(labelsize=8)
+
+    fig.tight_layout()
+    savefig(preprocessing_raw_dir / config["filename"])
 
 # ----------- QC RELATIONSHIPS BY GROUP ---------- #
 
@@ -456,133 +662,142 @@ logging.info("[8] Generating grouped QC relationship plots")
 
 for group in ["patient", "region", "sample"]:
 
-    sc.pl.scatter(
-        adata,
-        x="total_counts",
-        y="n_genes_by_counts",
-        color=group,
-        alpha=0.6,
-        size=2,
-        show=False
-    )
-    savefig(
-        preprocessing_raw_dir / f"qc_scatter_counts_genes_{group}.jpg"
+    x = adata.obs["total_counts"]
+    y = adata.obs["n_genes_by_counts"]
+    c = adata.obs[group].astype("category")
+
+    valid = x.notna() & y.notna() & c.notna()
+    categories = c[valid].cat.categories
+
+    fig, ax = plt.subplots(figsize=(5, 4))
+
+    for category, color in zip(categories, COLOR_PALETTE):
+        mask = valid & (c == category)
+
+        ax.scatter(
+            x[mask],
+            y[mask],
+            color=color,
+            s=2,
+            linewidths=0,
+            label=str(category)
+        )
+
+    ax.set_xlabel(
+        QC_METRICS_NAMES.get("total_counts", "Number of Barcodes"),
+        fontsize=12,
+        labelpad=10,
+        y=-0.02
     )
 
-    values = adata.obs[column].dropna().unique()
+    ax.set_ylabel(
+        QC_METRICS_NAMES.get("n_genes_by_counts", "Genes Expressed per Barcode"),
+        fontsize=12,
+        labelpad=10
+    )
+
+    ax.tick_params(axis="both", labelsize=9)
+    ax.grid(axis="both", alpha=0.7)
+
+    ax.legend(
+        title=group.replace("_", " ").title(),
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left",
+        fontsize=8,
+        markerscale=3,
+        frameon=True
+    )
+
+    fig.tight_layout()
+    savefig(preprocessing_raw_dir / f"qc_scatter_counts_vs_genes_{group}.jpg")
+
+    values = c[valid].cat.categories
     n_values = len(values)
 
     ncols = 2
     nrows = math.ceil(n_values / ncols)
 
     fig, axes = plt.subplots(
-        ncols, nrows,
-        figsize=(nrows * 5, 12),
+        nrows,
+        ncols,
+        figsize=(ncols * 4.5, nrows * 3.5),
         sharex=True,
         sharey=True,
-        constrained_layout=True,
+        squeeze=False
     )
 
-    axes = np.atleast_1d(axes).ravel()
+    axes = axes.ravel()
     scatter = None
 
     for ax, value in zip(axes, values):
 
-        mask = adata.obs[column] == value
+        mask = adata.obs[group] == value
 
         scatter = ax.scatter(
-            adata.obs.loc[mask, "total_counts"],
-            adata.obs.loc[mask, "n_genes_by_counts"],
+            x[mask],
+            y[mask],
             c=adata.obs.loc[mask, "pct_counts_mt"],
-            s=2,
-            alpha=0.5
+            cmap=NAVY_WHITE,
+            s=3,
+            alpha=0.65,
+            linewidths=0,
+            rasterized=True
         )
 
-        ax.set_title(str(value))
-        ax.set_xlabel("Total counts")
-        ax.set_ylabel("Detected genes")
-        ax.grid(alpha=0.2)
+        ax.tick_params(axis="both", labelsize=9)
+        ax.grid(axis="both", alpha=0.7)
+
+        ax.set_title(
+            value,
+            fontsize=11,
+            fontweight="bold",
+            color=MAIN_COLOR,
+            loc="center",
+            pad=12
+        )
 
     for ax in axes[n_values:]:
         ax.set_visible(False)
 
+    fig.supxlabel(
+        QC_METRICS_NAMES.get("total_counts", "Number of Barcodes"),
+        fontsize=12,
+        y=-0.02
+    )
+
+    fig.supylabel(
+        QC_METRICS_NAMES.get("n_genes_by_counts", "Genes Expressed per Barcode"),
+        fontsize=12
+    )
+
+    fig.suptitle(
+        f"QC Metrics by {group.replace('_', ' ').title()}",
+        fontsize=14,
+        fontweight="bold",
+        color=MAIN_COLOR,
+        y=1.03
+    )
+
     if scatter is not None:
-        fig.colorbar(
+        cbar = fig.colorbar(
             scatter,
             ax=axes[:n_values].tolist(),
-            pad=0.04,
-            fraction=0.025,
-            label="Mitochondrial counts (%)",
+            location="right",
+            pad=0.12,
+            fraction=0.05,
+            label="Mitochondrial Read Fraction per Barcode"
         )
-
-    fig.savefig(
-        preprocessing_raw_dir / f"qc_scatter_counts_genes_{group}_individual.jpg",
-        dpi=300,
-        bbox_inches="tight",
-    )
-    plt.close(fig)
-
-# ----------- SAMPLE LEVEL QC ---------- # 
-
-logging.info("[9] Generating sample-level QC plots")  
-
-# counts per sample
-sc.pl.violin(
-    adata,
-    "total_counts",
-    groupby="sample",
-    stripplot=False,
-    cut=0,
-    rotation=45,
-    log=True,
-    show=False
-)
-savefig(
-    preprocessing_raw_dir / "qc_total_counts_by_sample.jpg"
-)
-
-# mitochondrial percentage per sample
-sc.pl.violin(
-    adata,
-    "pct_counts_mt",
-    groupby="sample",
-    stripplot=False,
-    cut=0,
-    rotation=45,
-    show=False
-)
-savefig(
-    preprocessing_raw_dir / "qc_mt_by_sample.jpg"
-)
-
-# ----------- TUMOR & LYMPH COMPARISON ---------- # 
-
-logging.info("[10] Generating region-specific QC plots")
-
-for region, name in [("T", "tumor"), ("L", "lymph")]:
-
-    subset = adata[adata.obs["region"] == region]
-
-    sc.pl.violin(
-        subset,
-        QC_METRICS,
-        groupby="patient",
-        stripplot=False,
-        cut=0,
-        rotation=45,
-        multi_panel=True,
-        show=False
-    )
-    plt.savefig(
-        preprocessing_raw_dir / f"qc_metrics_{name}_by_patient.jpg",
-        dpi=300,
-        bbox_inches="tight"
-    )
-    plt.close("all")
+        cbar.set_label(
+            QC_METRICS_NAMES.get(config["color"], config["color"]),
+            fontsize=10,
+            labelpad=8
+        )
+        
+    savefig(preprocessing_raw_dir / f"qc_scatter_counts_vs_genes_{group}_individual.jpg")
 
 # ----------- FILTERING DIAGNOSTICS ---------- # 
 
-logging.info("[11] Generating filtering diagnostics")
+logging.info("[9] Generating filtering diagnostics")
 
 # detected genes per cell
 logging.info(
@@ -591,51 +806,24 @@ logging.info(
 )
 
 fig, ax = plt.subplots(figsize=(7, 5))
-sns.histplot(
-    adata.obs["n_genes_by_counts"],
-    bins=100,
-    color=main_colors[0],
-    ax=ax
-)
-ax.axvline(
-    MIN_GENES,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label=f"Threshold: {MIN_GENES}"
-)
-ax.set_xlabel("Number of detected genes")
-ax.set_ylabel("Number of cells")
-ax.legend()
-fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filter_genes_per_cell.jpg"
-)
-
-fig, ax = plt.subplots(figsize=(7, 5))
 xmin = 0
-xmax = MIN_GENES + 1000
+xmax = 800
 sns.histplot(
     adata.obs["n_genes_by_counts"],
-    bins=np.arange(xmin, xmax + 10, 10),
-    color=main_colors[0],
+    bins=1000,
+    color=MAIN_COLOR,
+    alpha=0.95,
     ax=ax
 )
-ax.axvline(
-    MIN_GENES,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label=f"Threshold: {MIN_GENES}"
-)
-ax.set_xlabel("Number of detected genes")
-ax.set_ylabel("Number of cells")
+ax.set_xlabel("Number of Expressed Genes", fontsize=12, labelpad=10)
+ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
+ax.tick_params(axis="x", bottom=True, labelsize=9)
+ax.tick_params(axis="y", labelsize=9)
+ax.grid(axis="y", alpha=0.7)
+ax.grid(axis="x", visible=False)
 ax.set_xlim(xmin, xmax)
-ax.legend()
 fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filter_genes_per_cell_zoomed.jpg"
-)
+savefig(preprocessing_raw_dir / "filter_genes_per_cell_zoomed.jpg")
 
 # cells expressing each gene
 logging.info(
@@ -644,50 +832,24 @@ logging.info(
 )
 
 fig, ax = plt.subplots(figsize=(7, 5))
+xmin = 0
+xmax = 12
 sns.histplot(
     adata.var["n_cells_by_counts"],
-    bins=100,
-    color=main_colors[0],
+    binwidth=1,
+    color=MAIN_COLOR,
+    alpha=0.95,
     ax=ax
 )
-ax.axvline(
-    MIN_CELLS,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label=f"Threshold: {MIN_CELLS}"
-)
-ax.set_xlabel("Number of cells expressing gene")
-ax.set_ylabel("Number of genes")
-ax.legend()
+ax.set_xlabel("Number of Barcodes", fontsize=12, labelpad=10)
+ax.set_ylabel("Number of Expressed Genes", fontsize=12, labelpad=10)
+ax.tick_params(axis="x", bottom=True, labelsize=9)
+ax.tick_params(axis="y", labelsize=9)
+ax.grid(axis="y", alpha=0.7)
+ax.grid(axis="x", visible=False)
+ax.set_xlim(xmin, xmax)
 fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filter_cells_per_gene.jpg"
-)
-
-fig, ax = plt.subplots(figsize=(7, 5))
-xmin = max(0, MIN_CELLS - 5)
-xmax = MIN_CELLS + 10
-sns.histplot(
-    adata.var["n_cells_by_counts"],    
-    bins=np.arange(xmin, xmax + 10, 1),
-    color=main_colors[0],
-    ax=ax
-)
-ax.axvline(
-    MIN_CELLS,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label=f"Threshold: {MIN_CELLS}"
-)
-ax.set_xlabel("Number of cells expressing gene")
-ax.set_ylabel("Number of genes")
-ax.set_xlim(xmin, xmax) 
-fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filter_cells_per_gene_zoomed.jpg"
-)
+savefig(preprocessing_raw_dir / "filter_cells_per_gene_zoomed.jpg")
 
 # mitochondrial percentage
 logging.info(
@@ -696,99 +858,31 @@ logging.info(
 )
 
 fig, ax = plt.subplots(figsize=(7, 5))
-sns.histplot(
-    adata.obs["pct_counts_mt"],
-    bins=100,
-    color=main_colors[0],
-    ax=ax
-)
-ax.axvline(
-    MT_CUTOFF,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label=f"Threshold: {MT_CUTOFF}%"
-)
-ax.set_xlabel("Mitochondrial counts (%)")
-ax.set_ylabel("Number of cells")
-ax.set_xlim(0, 100)
-ax.legend()
-fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filter_mitochondrial_percentage.jpg"
-)
-
-fig, ax = plt.subplots(figsize=(7, 5))
-xmin = max(0, MT_CUTOFF - 10)
-xmax = min(MT_CUTOFF + 10, 100)
+xmin = 15
+xmax = 100
 sns.histplot(
     adata.obs["pct_counts_mt"],    
-    bins=np.arange(xmin, xmax + 10, 1),
-    color=main_colors[0],
+    bins=1000,
+    color=MAIN_COLOR,
+    alpha=0.95,
     ax=ax
 )
-plt.axvline(
-    MT_CUTOFF,
-    color="red",
-    linestyle="--",
-    linewidth=2,
-    label=f"Threshold: {MT_CUTOFF}%"
-)
-ax.set_xlabel("Mitochondrial counts (%)")
-ax.set_ylabel("Number of cells") 
+ax.set_xlabel("Mitochondrial Read Fraction per Barcode", fontsize=12, labelpad=10)
+ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
+ax.tick_params(axis="x", bottom=True, labelsize=9)
+ax.tick_params(axis="y", labelsize=9)
+ax.grid(axis="y", alpha=0.7)
+ax.grid(axis="x", visible=False)
 ax.set_xlim(xmin, xmax) 
-plt.tight_layout()
-fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filter_mitochondrial_percentage_zoomed.jpg"
-)
-
-# ----------- FILTERING SPACE ---------- # 
-
-logging.info("[12] Generating filtering space")
-
-# show where the proposed thresholds fall in QC space
-
-fig, ax = plt.subplots(figsize=(8, 6))
-scatter = ax.scatter(
-    adata.obs["n_genes_by_counts"],
-    adata.obs["pct_counts_mt"],
-    c=adata.obs["total_counts"],
-    s=2,
-    alpha=0.5
-)
-ax.axvline(
-    MIN_GENES,
-    color="red",
-    linestyle="--",
-    label=f"Min genes = {MIN_GENES}"
-)
-ax.axhline(
-    MT_CUTOFF,
-    color="red",
-    linestyle="--",
-    label=f"MT cutoff = {MT_CUTOFF}%",
-)
-ax.set_xlabel("Number of detected genes")
-ax.set_ylabel("Mitochondrial counts (%)")
-fig.colorbar(
-    scatter,
-    ax=ax,
-    label="Total counts",
-)
-ax.legend()
-fig.tight_layout()
-savefig(
-    preprocessing_raw_dir / "filtering_qc_space.jpg"
-)
+savefig(preprocessing_raw_dir / "filter_mitochondrial_percentage_zoomed.jpg")
 
 # ----------- OVERALL QC FAILURE ANALYSIS ---------- #
 
-logging.info("[13] Overall QC threshold analysis")
+logging.info("[10] Overall QC threshold analysis")
 
 # cell-level QC criteria
-low_genes = adata.obs["n_genes_by_counts"] < MIN_GENES
-high_mt = adata.obs["pct_counts_mt"] >= MT_CUTOFF
+low_genes = adata.obs["n_genes_by_counts"] < ST_MIN_GENES
+high_mt = adata.obs["pct_counts_mt"] >= ST_MT_CUTOFF
 
 # cells failing either criterion
 qc_fail = low_genes | high_mt
@@ -798,13 +892,13 @@ qc_pass = ~qc_fail
 
 logging.info(
     "Low genes (< %d): %d",
-    MIN_GENES,
+    ST_MIN_GENES,
     low_genes.sum()
 )
 
 logging.info(
     "High mitochondrial (>= %d%%): %d",
-    MT_CUTOFF, 
+    ST_MT_CUTOFF, 
     high_mt.sum()
 )
 
@@ -849,7 +943,7 @@ logging.info(
 
 # ----------- QC FAILURE BY SAMPLE / PATIENT / REGION ---------- #
 
-logging.info("[14] QC failure rates by sample")
+logging.info("[12] QC failure rates by sample")
 
 qc_df = adata.obs[
     ["patient", "region", "sample"]
@@ -933,7 +1027,7 @@ logging.info(
 
 # ----------- HIGH-MITOCHONDRIAL CELLS ---------- # 
 
-logging.info("[15] Cells with highest mitochondrial percentage")
+logging.info("[13] Cells with highest mitochondrial percentage")
 
 highest_mt = (
     adata.obs
@@ -951,7 +1045,7 @@ logging.info(
 
 # ----------- HIGH-MITOCHONDRIAL CELLS BY SAMPLE ---------- #
 
-logging.info("[16] Investigating high-mitochondrial cells by sample")
+logging.info("[14] Investigating high-mitochondrial cells by sample")
 
 high_mt_by_sample = (
     qc_df.groupby(
@@ -972,14 +1066,14 @@ logging.info(
 
 # ----------- MITOCHONDRIAL THRESHOLD SENSITIVITY ---------- #
 
-logging.info("[17] Mitochondrial threshold sensitivity analysis") 
+logging.info("[15] Mitochondrial threshold sensitivity analysis") 
 
 threshold_results = []
 
 for cutoff in MT_CUTOFFS:
 
     pass_mask = (
-        (adata.obs["n_genes_by_counts"] >= MIN_GENES) &
+        (adata.obs["n_genes_by_counts"] >= ST_MIN_GENES) &
         (adata.obs["pct_counts_mt"] < cutoff)
     )
 
@@ -992,7 +1086,7 @@ for cutoff in MT_CUTOFFS:
             "retained_cells": retained,
             "removed_cells": removed,
             "retention_rate": pass_mask.mean(),
-            "removal_rate": (~pass_mask).mean(),
+            "removal_rate": (~pass_mask).mean()
         }
     )
 
@@ -1009,7 +1103,7 @@ sample_threshold_results = []
 for cutoff in MT_CUTOFFS:
 
     pass_mask = (
-        (adata.obs["n_genes_by_counts"] >= MIN_GENES) &
+        (adata.obs["n_genes_by_counts"] >= ST_MIN_GENES) &
         (adata.obs["pct_counts_mt"] < cutoff)
     )
 
@@ -1023,7 +1117,7 @@ for cutoff in MT_CUTOFFS:
             observed=True,
         )["qc_pass"].agg(
             retained="sum",
-            total="size",
+            total="size"
         )
     )
 
@@ -1045,7 +1139,7 @@ logging.info(
 
 # ----------- MITOCHONDRIAL DISTRIBUTIONS FOR SELECTED SAMPLES ---------- #
 
-logging.info("[18] Generating mitochondrial distributions for selected samples")
+logging.info("[16] Generating mitochondrial distributions for selected samples")
 
 for sample in SAMPLES_TO_INSPECT:
 
@@ -1058,38 +1152,26 @@ for sample in SAMPLES_TO_INSPECT:
         )
         continue
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-
+    fig, ax = plt.subplots(figsize=(7, 5))
     sns.histplot(
         adata.obs.loc[sample_mask, "pct_counts_mt"],
-        bins=100,
-        color=main_colors[0],
+        binwidth=1,
+        color=MAIN_COLOR,
+        alpha=0.95,
         ax=ax
     )
-    ax.axvline(
-        MT_CUTOFF,
-        color="red",
-        linestyle="--",
-        linewidth=2,
-        label=f"Threshold: {MT_CUTOFF}%",
-    )
-    plt.xlim(0, 100)
-    ax.set_xlim(0, 100)
-    ax.set_xlabel("Mitochondrial counts (%)")
-    ax.set_ylabel("Number of cells")
-    ax.set_title(sample)
-    ax.legend()
+    ax.set_xlabel("Number of Barcodes", fontsize=12, labelpad=10)
+    ax.set_ylabel("Number of Expressed Genes", fontsize=12, labelpad=10)
+    ax.tick_params(axis="x", bottom=True, labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", visible=False)
     fig.tight_layout()
-    fig.savefig(
-        preprocessing_raw_dir / f"mt_distribution_{sample}.jpg",
-        dpi=300,
-        bbox_inches="tight"
-    )
-    plt.close(fig)
+    savefig(preprocessing_raw_dir / f"mt_distribution_{sample}.jpg")
 
 # ----------- MITOCHONDRIAL BINS ----------------- #
 
-logging.info("[19] Investigating QC metrics across mitochondrial bins")
+logging.info("[17] Investigating QC metrics across mitochondrial bins")
 
 mt_bins = pd.cut(
     adata.obs["pct_counts_mt"],
@@ -1129,7 +1211,7 @@ logging.info(
 
 # ----------- TARGET SAMPLE INVESTIGATION ----------------- #
 
-logging.info("[20] Detailed QC statistics for selected samples")
+logging.info("[18] Detailed QC statistics for selected samples")
 
 for sample in TARGET_SAMPLES:
 
@@ -1155,7 +1237,7 @@ for sample in TARGET_SAMPLES:
 
 # ----------- MITOCHONDRIAL QC GROUPS ----------------- #
 
-logging.info("[21] Generating mitochondrial QC groups")
+logging.info("[19] Generating mitochondrial QC groups")
 
 mt_qc_group = pd.cut(
     adata.obs["pct_counts_mt"],
@@ -1192,7 +1274,7 @@ logging.info(
 
 # ----------- PCA INVESTIGATION ----------------- #
 
-logging.info("[21] Investigate Confounders using PCA")
+logging.info("[20] Investigate Confounders using PCA")
 
 adata_pca = adata.copy()
 
@@ -1208,30 +1290,141 @@ sc.pl.pca_variance_ratio(
     adata_pca, show=False
 )
 savefig(preprocessing_raw_dir / "pca_variance_ratio.jpg")
+
 sc.pl.pca_loadings(
     adata_pca, components='1,2,3', 
     show=False
 )
 savefig(preprocessing_raw_dir / "pca_loadings_ratio.jpg")
-sc.pl.pca(
-    adata_pca, annotate_var_explained=True, 
-    components=['1,2','3,4','1,4', '2,3'], 
-    color="pct_counts_mt", show=False
-)
-savefig(preprocessing_raw_dir / "pca_pct_mt.jpg")
-sc.pl.pca(
-    adata_pca, annotate_var_explained=True, 
-    components=['1,2','3,4','1,4', '2,3'], 
-    color="pct_counts_ribo", show=False
-)
-savefig(preprocessing_raw_dir / "pca_pct_ribo.jpg")
 
+fig_region = sc.pl.pca(
+    adata_pca,
+    annotate_var_explained=False,
+    components=PCA_COMPONENTS,
+    color="region",
+    palette=[MAIN_COLOR, ACCENT_COLOR],
+    show=False,
+    return_fig=True
+)
+
+pca_axes = style_pca_figure(fig_region, adata_pca)
+
+handles, labels = [], []
+
+for ax in pca_axes:
+    legend = ax.get_legend()
+
+    if legend is not None:
+        h, l = ax.get_legend_handles_labels()
+
+        for handle, label in zip(h, l):
+            if label not in labels:
+                handles.append(handle)
+                labels.append(label)
+
+        legend.remove()
+
+fig_region.subplots_adjust(
+    left=0.06,
+    right=0.86,
+    bottom=0.20,
+    top=0.96,
+    wspace=0.35
+)
+
+if handles:
+    fig_region.legend(
+        handles,
+        labels,
+        title="Region",
+        loc="center left",
+        bbox_to_anchor=(0.88, 0.5),
+        fontsize=9,
+        title_fontsize=10,
+        frameon=False
+    )
+
+savefig(preprocessing_raw_dir / "pca_adata.jpg")
+
+# pca colored by pct_counts_mt
+fig_mt = sc.pl.pca(
+    adata_pca,
+    annotate_var_explained=False,
+    components=PCA_COMPONENTS,
+    color="pct_counts_mt",
+    cmap=NAVY_WHITE,
+    colorbar_loc=None,
+    show=False,
+    return_fig=True
+)
+
+pca_axes = style_pca_figure(fig_mt, adata_pca)
+
+scatter = next(
+    collection
+    for ax in pca_axes
+    for collection in ax.collections
+    if collection.get_array() is not None
+)
+
+cbar = fig_mt.colorbar(
+    scatter,
+    ax=pca_axes,
+    location="right",
+    pad=0.025,
+    fraction=0.025
+)
+
+cbar.set_label(
+    "Mitochondrial Read Fraction per Barcode",
+    fontsize=10,
+    labelpad=8
+)
+cbar.ax.tick_params(labelsize=8)
+savefig(preprocessing_raw_dir / "pca_pct_mt.jpg")
+
+# pca colored by pct_counts_ribo
+fig_mt = sc.pl.pca(
+    adata_pca,
+    annotate_var_explained=False,
+    components=PCA_COMPONENTS,
+    color="pct_counts_ribo",
+    cmap=NAVY_WHITE,
+    colorbar_loc=None,
+    show=False,
+    return_fig=True
+)
+
+pca_axes = style_pca_figure(fig_mt, adata_pca)
+
+scatter = next(
+    collection
+    for ax in pca_axes
+    for collection in ax.collections
+    if collection.get_array() is not None
+)
+
+cbar = fig_mt.colorbar(
+    scatter,
+    ax=pca_axes,
+    location="right",
+    pad=0.025,
+    fraction=0.025
+)
+
+cbar.set_label(
+    "Ribosomal Read Fraction per Barcode",
+    fontsize=10,
+    labelpad=8
+)
+cbar.ax.tick_params(labelsize=8)
+savefig(preprocessing_raw_dir / "pca_pct_ribo.jpg")
 
 # ============================================================
 # ----------------------- SAVE DATA --------------------------
 # ============================================================
 
-logging.info("[22] Saving adata object as .h5 file")
+logging.info("[21] Saving adata object as .h5 file")
 
 adata.write_h5ad(
     save_path,
