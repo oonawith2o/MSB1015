@@ -1,22 +1,40 @@
-import logging
-import time
-import math
+"""
+Project:    Metabolic Reprogramming of Immune Response during Early Breast Cancer Dessimination
+Script:     01_load_data.py 
 
+Purpose:
+
+Input:
+
+Output:
+
+Author:     Oona Kintscher
+Created:    10.10.2026
+Version:    1.0.0
+
+"""
+
+#----------- LIBRARY IMPORT -----------
+
+import logging
+import time, math, os
 import pandas as pd
 import scanpy as sc
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+from pathlib import Path
 from matplotlib.colors import LinearSegmentedColormap
 
-from pathlib import Path
+#------------------------------------
+
+#----------- TIME STAMP -----------
 
 timestamp = time.strftime('%Y%m%d')
 
-#----------- DESIGN SETUP -----------
+#------------------------------------
 
-lab_size = 25
-tick_size = 15
+#----------- DESIGN SETUP -----------
 
 MAIN_COLOR = "#0E2841"
 ACCENT_COLOR = "#4E95D9"
@@ -64,14 +82,68 @@ logging.info("------------ Starting quality control ------------")
 
 #----------- FILE NAMES -------------
 
-sc_matrix_path = "../data/GSE225600_sc_matrix.mtx/matrix.mtx"
-sc_features_path = "../data/GSE225600_sc_features.tsv/GSE225600_sc_features.tsv"
-sc_barcodes_path = "../data/GSE225600_sc_barcodes.tsv/GSE225600_sc_barcodes.tsv"
-patients_path = "../data/supplementary_data/ADVS-10-2205395-s008.xlsx"
-save_path = '../data/processed_data/adata_raw.h5'
+DATA_FOLDER = "../data"
 
-preprocessing_raw_dir = Path("../results/preprocessing") / timestamp / "raw"
-preprocessing_raw_dir.mkdir(parents=True, exist_ok=True)
+RESOURCE_FOLDER = Path("../results/preprocessing") / timestamp / "raw"
+RESOURCE_FOLDER.mkdir(parents=True, exist_ok=True)
+
+SC_EXP_FNAME = os.path.join(DATA_FOLDER, "GSE225600_sc_matrix.mtx/matrix.mtx")
+SC_FEATURES_FNAME = os.path.join(DATA_FOLDER, "GSE225600_sc_features.tsv/GSE225600_sc_features.tsv")
+SC_BARCODES_FNAME = os.path.join(DATA_FOLDER, "GSE225600_sc_barcodes.tsv/GSE225600_sc_barcodes.tsv")
+PATIENT_INFO_FNAME = os.path.join(DATA_FOLDER, "supplementary_data/ADVS-10-2205395-s008.xlsx")
+SC_EXP_SAVE_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_raw.h5'")
+
+#------------------------------------
+
+#----------- GLOBAL VARIABLES -------
+
+QC_GROUPS = ["patient", "region", "sample"]
+
+QC_METRICS = [
+    "n_genes_by_counts",
+    "n_cells_by_counts",
+    "pct_counts_mt",
+]
+
+QC_METRICS_NAMES = {
+    "n_genes_by_counts": "Number of Expressed Genes per Barcode",
+    "n_cells_by_counts": "Number of Barcodes Expressing Gene",
+    "total_counts": "Number Counts per Barcode",
+    "pct_counts_mt": "Percentage of Mitochondrial Counts"
+}
+
+QC_PERCENTILES = [
+    0.01, 0.05, 0.10, 0.25, 0.50,
+    0.75, 0.90, 0.95, 0.99
+]
+
+# PRIMARY QC THRESHOLDS
+# - at least 200 detected genes per cell
+# - at least 3 detected cells per gene
+# - less than 20% mitochondrial counts
+
+ST_MIN_CELLS = 3
+ST_MIN_GENES = 200
+ST_MT_CUTOFF = 20.0
+
+MT_CUTOFFS = [15, 20, 25, 30]
+
+SAMPLES_TO_INSPECT = [
+    "P6_L",
+    "P3_T",
+    "P2_T",
+    "P7_T",
+]
+
+TARGET_SAMPLES = [
+    "P6_T",
+    "P6_L",
+]
+
+PCA_COMPONENTS = ["1,2", "3,4", "1,4", "2,3"]
+COMPONENT_PAIRS = [(0, 1), (2, 3), (0, 3), (1, 2)]
+
+FIGSIZE = (15, 4.5)
 
 #------------------------------------
 
@@ -128,56 +200,6 @@ def style_pca_figure(fig, adata_pca):
 
 #------------------------------------
 
-#----------- GLOBAL VARIABLES -------
-
-QC_GROUPS = ["patient", "region", "sample"]
-
-QC_METRICS = [
-    "n_genes_by_counts",
-    "total_counts",
-    "pct_counts_mt",
-]
-
-QC_METRICS_NAMES = {
-    "n_genes_by_counts": "Number of Genes",
-    "total_counts": "Number of Counts",
-    "pct_counts_mt": "Percentage of Mitochondrial Counts"
-}
-
-QC_PERCENTILES = [
-    0.01, 0.05, 0.10, 0.25, 0.50,
-    0.75, 0.90, 0.95, 0.99
-]
-
-# PRIMARY QC THRESHOLDS
-# - at least 200 detected genes per cell
-# - at least 3 detected cells per gene
-# - less than 20% mitochondrial counts
-
-ST_MIN_CELLS = 3
-ST_MIN_GENES = 200
-ST_MT_CUTOFF = 20.0
-
-MT_CUTOFFS = [15, 20, 25, 30]
-
-SAMPLES_TO_INSPECT = [
-    "P6_L",
-    "P3_T",
-    "P2_T",
-    "P7_T",
-]
-
-TARGET_SAMPLES = [
-    "P6_T",
-    "P6_L",
-]
-
-PCA_COMPONENTS = ["1,2", "3,4", "1,4", "2,3"]
-COMPONENT_PAIRS = [(0, 1), (2, 3), (0, 3), (1, 2)]
-
-FIGSIZE = (15, 4.5)
-
-#------------------------------------
 
 # ============================================================
 # ------------------------- MAIN -----------------------------
@@ -191,7 +213,7 @@ logging.info("[1] Loading data and creating AnnData object")
 patient_variables = ["age", "sex", "tumor_size", "lymph_nodes", "cancer_type", "grade",
                      "ER", "PR", "HER2","Ki67", "stage", "treatment"]
 patients = pd.read_excel(
-    patients_path, 
+    PATIENT_INFO_FNAME, 
     header=1, 
     names=patient_variables,
     index_col=0
@@ -205,20 +227,20 @@ logging.info("Patient information table\n%s",patients)
 
 # load single-cell data
 features = pd.read_csv(
-    sc_features_path,
+    SC_FEATURES_FNAME,
     sep="\t",
     header=None,
     dtype=str
 )
 
 barcodes = pd.read_csv(
-    sc_barcodes_path,
+    SC_BARCODES_FNAME,
     sep="\t",
     header=None,
     dtype=str
 )
 
-adata = sc.read_mtx(sc_matrix_path)
+adata = sc.read_mtx(SC_EXP_FNAME)
 adata = adata.transpose()
   
 logging.info("Shape of the original dataset: %s", adata.shape)          # Cell x Gene
@@ -345,7 +367,7 @@ for column in QC_GROUPS:
     ax.grid(axis="x", visible=False)
     ax.set_ylim(0, counts.max() * 1.15)
     fig.tight_layout()
-    savefig(preprocessing_raw_dir / f"barcode_distribution_by_{column}.jpg")
+    savefig(RESOURCE_FOLDER / f"barcode_distribution_by_{column}.jpg")
 
 # ----------- QC METRIC DISTRIBUTION ---------- #
 
@@ -354,13 +376,22 @@ logging.info("[5] Generating QC metric distribution plots")
 # overall distribution
 fig, axes = plt.subplots(1,3,figsize=(15, 4))
 for ax, metric in zip(axes, QC_METRICS):
-    sns.histplot(
-        adata.obs[metric],
-        bins=100,
-        color=MAIN_COLOR,
-        alpha=0.95,
-        ax=ax
-    )
+    if metric == "n_cells_by_counts":
+        sns.histplot(
+                adata.var[metric],
+                bins=100,
+                color=MAIN_COLOR,
+                alpha=0.95,
+                ax=ax
+        )
+    else:
+        sns.histplot(
+                adata.obs[metric],
+                bins=100,
+                color=MAIN_COLOR,
+                alpha=0.95,
+                ax=ax
+        )
     ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=12, labelpad=10)
     ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
     ax.tick_params(axis="x", bottom=True, labelsize=9)
@@ -368,7 +399,7 @@ for ax, metric in zip(axes, QC_METRICS):
     ax.grid(axis="y", alpha=0.7)
     ax.grid(axis="x", visible=False)
 fig.tight_layout()
-savefig(preprocessing_raw_dir / "qc_metric_distribution_summary.jpg")
+savefig(RESOURCE_FOLDER / "qc_metric_distribution_summary.jpg")
 
 # log-scale distribution
 fig, axes = plt.subplots(1, 2, figsize=(10, 4))
@@ -388,7 +419,7 @@ for ax, metric in zip(axes, ["total_counts", "n_genes_by_counts"]):
     ax.grid(axis="y", alpha=0.7)
     ax.grid(axis="x", visible=False)
 fig.tight_layout()
-savefig(preprocessing_raw_dir / "qc_metric_distributions_summary_log.jpg")
+savefig(RESOURCE_FOLDER / "qc_metric_distributions_summary_log.jpg")
 
 # three-panel summary plots - genes expressed
 x = adata.obs["n_genes_by_counts"].dropna()
@@ -448,7 +479,66 @@ fig.supxlabel(
     color="#263746",
     y=-0.02
 )
-savefig(preprocessing_raw_dir / f"qc_metric_distributions_n_genes_by_counts_summary.jpg")
+savefig(RESOURCE_FOLDER / f"qc_metric_distributions_n_genes_by_counts_summary.jpg")
+
+# three-panel summary plots - cells expressed
+x = adata.var["n_cells_by_counts"].dropna()
+
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 4), dpi=300, sharey=True)
+axes = (ax1, ax2, ax3)
+sns.histplot(
+    x=x,
+    binwidth=1,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax1
+)
+sns.histplot(
+    x=x,
+    binwidth=1,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax2,
+)
+ax2.set_xlim(0, 10)
+sns.histplot(
+    x=x,
+    binwidth=1,
+    kde=True,
+    color=MAIN_COLOR,
+    alpha=0.7,
+    ax=ax3,
+)
+ax3.set_xlim(3000, x.max())
+titles = [
+    "Full Distribution",
+    "Lower Range (0-10)",
+    f"Upper Range (3,000-{x.max()})",
+]
+for ax, title in zip(axes, titles):
+    ax.set_title(
+        title,
+        fontsize=11,
+        fontweight="bold",
+        color=MAIN_COLOR,
+        loc="center",
+        pad=12,
+    )
+    ax.set_xlabel("")
+    ax.tick_params(axis="x", bottom=True, labelsize=9)
+    ax.tick_params(axis="y", labelsize=9)
+    ax.grid(axis="y", alpha=0.7)
+    ax.grid(axis="x", visible=False)
+    sns.despine(ax=ax, left=True, bottom=False)
+fig.supxlabel(
+    "Barcodes Expressing Gene",
+    fontsize=12,
+    color="#263746",
+    y=-0.02
+)
+savefig(RESOURCE_FOLDER / f"qc_metric_distributions_n_cells_by_counts_summary.jpg")
 
 # three-panel summary plots - mitochondrial percentage
 x = adata.obs["pct_counts_mt"].dropna()
@@ -509,7 +599,7 @@ fig.supxlabel(
     y=-0.02
 )
 fig.tight_layout()
-savefig(preprocessing_raw_dir / f"qc_metric_distributions_pct_counts_mt_summary.jpg")
+savefig(RESOURCE_FOLDER / f"qc_metric_distributions_pct_counts_mt_summary.jpg")
 
 # ----------- QC METRICS BY GROUP ---------- #
 
@@ -571,7 +661,7 @@ for group in QC_GROUPS:
         y=1.03,
     )
     fig.tight_layout()
-    savefig(preprocessing_raw_dir / f"qc_violin_{group}.jpg")
+    savefig(RESOURCE_FOLDER / f"qc_violin_{group}.jpg")
 
 # ----------- QC RELATIONSHIPS ---------- #
 
@@ -654,7 +744,7 @@ for config in scatter_configs:
     cbar.ax.tick_params(labelsize=8)
 
     fig.tight_layout()
-    savefig(preprocessing_raw_dir / config["filename"])
+    savefig(RESOURCE_FOLDER / config["filename"])
 
 # ----------- QC RELATIONSHIPS BY GROUP ---------- #
 
@@ -709,7 +799,7 @@ for group in ["patient", "region", "sample"]:
     )
 
     fig.tight_layout()
-    savefig(preprocessing_raw_dir / f"qc_scatter_counts_vs_genes_{group}.jpg")
+    savefig(RESOURCE_FOLDER / f"qc_scatter_counts_vs_genes_{group}.jpg")
 
     values = c[valid].cat.categories
     n_values = len(values)
@@ -793,7 +883,7 @@ for group in ["patient", "region", "sample"]:
             labelpad=8
         )
         
-    savefig(preprocessing_raw_dir / f"qc_scatter_counts_vs_genes_{group}_individual.jpg")
+    savefig(RESOURCE_FOLDER / f"qc_scatter_counts_vs_genes_{group}_individual.jpg")
 
 # ----------- FILTERING DIAGNOSTICS ---------- # 
 
@@ -823,7 +913,7 @@ ax.grid(axis="y", alpha=0.7)
 ax.grid(axis="x", visible=False)
 ax.set_xlim(xmin, xmax)
 fig.tight_layout()
-savefig(preprocessing_raw_dir / "filter_genes_per_cell_zoomed.jpg")
+savefig(RESOURCE_FOLDER / "filter_genes_per_cell_zoomed.jpg")
 
 # cells expressing each gene
 logging.info(
@@ -849,7 +939,7 @@ ax.grid(axis="y", alpha=0.7)
 ax.grid(axis="x", visible=False)
 ax.set_xlim(xmin, xmax)
 fig.tight_layout()
-savefig(preprocessing_raw_dir / "filter_cells_per_gene_zoomed.jpg")
+savefig(RESOURCE_FOLDER / "filter_cells_per_gene_zoomed.jpg")
 
 # mitochondrial percentage
 logging.info(
@@ -874,7 +964,7 @@ ax.tick_params(axis="y", labelsize=9)
 ax.grid(axis="y", alpha=0.7)
 ax.grid(axis="x", visible=False)
 ax.set_xlim(xmin, xmax) 
-savefig(preprocessing_raw_dir / "filter_mitochondrial_percentage_zoomed.jpg")
+savefig(RESOURCE_FOLDER / "filter_mitochondrial_percentage_zoomed.jpg")
 
 # ----------- OVERALL QC FAILURE ANALYSIS ---------- #
 
@@ -1167,7 +1257,7 @@ for sample in SAMPLES_TO_INSPECT:
     ax.grid(axis="y", alpha=0.7)
     ax.grid(axis="x", visible=False)
     fig.tight_layout()
-    savefig(preprocessing_raw_dir / f"mt_distribution_{sample}.jpg")
+    savefig(RESOURCE_FOLDER / f"mt_distribution_{sample}.jpg")
 
 # ----------- MITOCHONDRIAL BINS ----------------- #
 
@@ -1289,13 +1379,13 @@ sc.tl.pca(adata_pca)
 sc.pl.pca_variance_ratio(
     adata_pca, show=False
 )
-savefig(preprocessing_raw_dir / "pca_variance_ratio.jpg")
+savefig(RESOURCE_FOLDER / "pca_variance_ratio.jpg")
 
 sc.pl.pca_loadings(
     adata_pca, components='1,2,3', 
     show=False
 )
-savefig(preprocessing_raw_dir / "pca_loadings_ratio.jpg")
+savefig(RESOURCE_FOLDER / "pca_loadings_ratio.jpg")
 
 fig_region = sc.pl.pca(
     adata_pca,
@@ -1344,7 +1434,7 @@ if handles:
         frameon=False
     )
 
-savefig(preprocessing_raw_dir / "pca_adata.jpg")
+savefig(RESOURCE_FOLDER / "pca_adata.jpg")
 
 # pca colored by pct_counts_mt
 fig_mt = sc.pl.pca(
@@ -1381,7 +1471,7 @@ cbar.set_label(
     labelpad=8
 )
 cbar.ax.tick_params(labelsize=8)
-savefig(preprocessing_raw_dir / "pca_pct_mt.jpg")
+savefig(RESOURCE_FOLDER / "pca_pct_mt.jpg")
 
 # pca colored by pct_counts_ribo
 fig_mt = sc.pl.pca(
@@ -1418,7 +1508,7 @@ cbar.set_label(
     labelpad=8
 )
 cbar.ax.tick_params(labelsize=8)
-savefig(preprocessing_raw_dir / "pca_pct_ribo.jpg")
+savefig(RESOURCE_FOLDER / "pca_pct_ribo.jpg")
 
 # ============================================================
 # ----------------------- SAVE DATA --------------------------

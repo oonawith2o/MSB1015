@@ -1,0 +1,148 @@
+2026-10-12 14:49:03,927 - INFO - ----------- Starting clustering ------------
+2026-10-12 14:49:03,927 - INFO - [1] Loading adata object
+2026-10-12 14:49:22,896 - INFO - AnnData object:
+AnnData object with n_obs × n_vars = 18632 × 27792
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb', 'n_genes', 'doublet_score', 'predicted_doublet', 'size_factors'
+    var: 'mt', 'ribo', 'hb', 'n_cells_by_counts', 'mean_counts', 'log1p_mean_counts', 'pct_dropout_by_counts', 'total_counts', 'log1p_total_counts', 'n_cells', 'highly_variable', 'highly_variable_rank', 'means', 'variances', 'variances_norm', 'hvg_pooled', 'highly_variable_nbatches', 'hvg_region', 'hvg_patient', 'hvg_sample', 'mean', 'std'
+    uns: 'HER2_colors', 'PR_colors', 'hvg', 'log1p', 'neighbors', 'pca', 'region_colors', 'sample_colors', 'scrublet', 'tumor_size_colors', 'tumor_volume_colors', 'umap'
+    obsm: 'X_pca', 'X_pca_harmony', 'X_umap'
+    varm: 'PCs'
+    obsp: 'connectivities', 'distances'
+    layers: 'counts', None (.X)
+2026-10-12 14:49:22,944 - INFO - Initial dimensions: 18632 cells x 27792 genes
+2026-10-12 14:49:22,944 - INFO - [4] Maker gene curation
+2026-10-12 14:49:24,915 - INFO - Marker overlap by cell type:
+source
+Endothelial cells                               35
+Fibroblasts                                     25
+Acinar cells                                    25
+Podocytes                                       22
+Macrophages                                     22
+B cells naive                                   20
+Plasma cells                                    20
+Luminal epithelial cells                        19
+Dendritic cells                                 19
+Mesangial cells                                 19
+Beta cells                                      17
+Proximal tubule cells                           17
+Oligodendrocytes                                17
+NK cells                                        16
+Alpha cells                                     16
+Gamma delta T cells                             16
+T cells                                         16
+Platelets                                       15
+Pulmonary alveolar type II cells                15
+Plasmacytoid dendritic cells                    15
+Enterocytes                                     15
+Neurons                                         15
+Pancreatic stellate cells                       14
+Hepatic stellate cells                          13
+Smooth muscle cells                             13
+Astrocytes                                      13
+Adipocytes                                      13
+Ductal cells                                    11
+B cells                                         10
+Cholangiocytes                                  10
+Monocytes                                        9
+Hepatocytes                                      9
+Keratinocytes                                    8
+Leydig cells                                     8
+Neutrophils                                      8
+Oligodendrocyte progenitor cells                 7
+Mast cells                                       7
+Erythroid-like and erythroid precursor cells     7
+Gamma (PP) cells                                 6
+Delta cells                                      6
+Clara cells                                      6
+Germ cells                                       6
+Goblet cells                                     6
+Pericytes                                        6
+Enteroendocrine cells                            6
+Mammary epithelial cells                         5
+Loop of Henle cells                              4
+Ependymal cells                                  4
+Myoepithelial cells                              3
+Basal cells                                      3
+Enteric glia cells                               2
+Granulosa cells                                  2
+Epithelial cells                                 2
+Mesothelial cells                                2
+Serotonergic neurons                             2
+T cytotoxic cells                                2
+Peri-islet Schwann cells                         1
+Peritubular myoid cells                          1
+T memory cells                                   1
+Name: target, dtype: int64
+2026-10-12 14:51:48,417 - INFO - Clustering Phase I - Stability 
+   res_low  res_high  n_clusters_low  n_clusters_high       ARI       NMI
+0      0.2       0.3              15               17  0.914348  0.953345
+1      0.3       0.4              17               18  0.982239  0.979492
+2      0.4       0.5              18               21  0.819462  0.923416
+3      0.5       0.6              21               23  0.957975  0.972794
+4      0.6       0.7              23               23  0.867215  0.940730
+5      0.7       0.8              23               24  0.961687  0.976204
+6      0.8       0.9              24               26  0.972554  0.983853
+7      0.9       1.0              26               26  0.860228  0.961077
+8      1.0       1.1              26               28  0.938533  0.966231
+9      1.1       1.2              28               30  0.871011  0.947898
+2026-10-12 14:54:38,603 - INFO - Clustering Phase I - Seed Stability 
+    resolutions  ARI_mean    ARI_sd   ARI_min  n_clusters_mean
+0           0.2  0.972066  0.020529  0.947839             14.3
+1           0.3  0.990184  0.009453  0.966442             16.9
+2           0.4  0.972286  0.042956  0.883252             18.0
+3           0.5  0.942425  0.041503  0.843632             21.3
+4           0.6  0.940249  0.041334  0.839888             22.5
+5           0.7  0.941680  0.028299  0.878930             22.9
+6           0.8  0.948472  0.037662  0.885303             24.2
+7           0.9  0.901738  0.034336  0.832641             26.1
+8           1.0  0.886220  0.033475  0.833518             26.5
+9           1.1  0.891530  0.026220  0.824889             28.0
+10          1.2  0.875058  0.036169  0.790850             28.9
+2026-10-12 14:55:59,601 - INFO - Marker gene score object 
+AnnData object with n_obs × n_vars = 18632 × 50
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb', 'n_genes', 'doublet_score', 'predicted_doublet', 'size_factors', 'leiden_res_0.20', 'leiden_res_0.30', 'leiden_res_0.40', 'leiden_res_0.50', 'leiden_res_0.60', 'leiden_res_0.70', 'leiden_res_0.80', 'leiden_res_0.90', 'leiden_res_1.00', 'leiden_res_1.10', 'leiden_res_1.20', 'leiden_r0.20_s0', 'leiden_r0.20_s1', 'leiden_r0.20_s2', 'leiden_r0.20_s3', 'leiden_r0.20_s4', 'leiden_r0.20_s10', 'leiden_r0.20_s21', 'leiden_r0.20_s42', 'leiden_r0.20_s123', 'leiden_r0.20_s2026', 'leiden_r0.30_s0', 'leiden_r0.30_s1', 'leiden_r0.30_s2', 'leiden_r0.30_s3', 'leiden_r0.30_s4', 'leiden_r0.30_s10', 'leiden_r0.30_s21', 'leiden_r0.30_s42', 'leiden_r0.30_s123', 'leiden_r0.30_s2026', 'leiden_r0.40_s0', 'leiden_r0.40_s1', 'leiden_r0.40_s2', 'leiden_r0.40_s3', 'leiden_r0.40_s4', 'leiden_r0.40_s10', 'leiden_r0.40_s21', 'leiden_r0.40_s42', 'leiden_r0.40_s123', 'leiden_r0.40_s2026', 'leiden_r0.50_s0', 'leiden_r0.50_s1', 'leiden_r0.50_s2', 'leiden_r0.50_s3', 'leiden_r0.50_s4', 'leiden_r0.50_s10', 'leiden_r0.50_s21', 'leiden_r0.50_s42', 'leiden_r0.50_s123', 'leiden_r0.50_s2026', 'leiden_r0.60_s0', 'leiden_r0.60_s1', 'leiden_r0.60_s2', 'leiden_r0.60_s3', 'leiden_r0.60_s4', 'leiden_r0.60_s10', 'leiden_r0.60_s21', 'leiden_r0.60_s42', 'leiden_r0.60_s123', 'leiden_r0.60_s2026', 'leiden_r0.70_s0', 'leiden_r0.70_s1', 'leiden_r0.70_s2', 'leiden_r0.70_s3', 'leiden_r0.70_s4', 'leiden_r0.70_s10', 'leiden_r0.70_s21', 'leiden_r0.70_s42', 'leiden_r0.70_s123', 'leiden_r0.70_s2026', 'leiden_r0.80_s0', 'leiden_r0.80_s1', 'leiden_r0.80_s2', 'leiden_r0.80_s3', 'leiden_r0.80_s4', 'leiden_r0.80_s10', 'leiden_r0.80_s21', 'leiden_r0.80_s42', 'leiden_r0.80_s123', 'leiden_r0.80_s2026', 'leiden_r0.90_s0', 'leiden_r0.90_s1', 'leiden_r0.90_s2', 'leiden_r0.90_s3', 'leiden_r0.90_s4', 'leiden_r0.90_s10', 'leiden_r0.90_s21', 'leiden_r0.90_s42', 'leiden_r0.90_s123', 'leiden_r0.90_s2026', 'leiden_r1.00_s0', 'leiden_r1.00_s1', 'leiden_r1.00_s2', 'leiden_r1.00_s3', 'leiden_r1.00_s4', 'leiden_r1.00_s10', 'leiden_r1.00_s21', 'leiden_r1.00_s42', 'leiden_r1.00_s123', 'leiden_r1.00_s2026', 'leiden_r1.10_s0', 'leiden_r1.10_s1', 'leiden_r1.10_s2', 'leiden_r1.10_s3', 'leiden_r1.10_s4', 'leiden_r1.10_s10', 'leiden_r1.10_s21', 'leiden_r1.10_s42', 'leiden_r1.10_s123', 'leiden_r1.10_s2026', 'leiden_r1.20_s0', 'leiden_r1.20_s1', 'leiden_r1.20_s2', 'leiden_r1.20_s3', 'leiden_r1.20_s4', 'leiden_r1.20_s10', 'leiden_r1.20_s21', 'leiden_r1.20_s42', 'leiden_r1.20_s123', 'leiden_r1.20_s2026', 'immune_marker_detected', 'non_immune_marker_detected'
+    uns: 'HER2_colors', 'PR_colors', 'hvg', 'log1p', 'neighbors', 'pca', 'region_colors', 'sample_colors', 'scrublet', 'tumor_size_colors', 'tumor_volume_colors', 'umap', 'leiden_res_0.20', 'leiden_res_0.30', 'leiden_res_0.40', 'leiden_res_0.50', 'leiden_res_0.60', 'leiden_res_0.70', 'leiden_res_0.80', 'leiden_res_0.90', 'leiden_res_1.00', 'leiden_res_1.10', 'leiden_res_1.20', 'leiden_res_0.20_colors', 'leiden_res_0.30_colors', 'leiden_res_0.40_colors', 'leiden_res_0.50_colors', 'leiden_res_0.60_colors', 'leiden_res_0.70_colors', 'leiden_res_0.80_colors', 'leiden_res_0.90_colors', 'leiden_res_1.00_colors', 'leiden_res_1.10_colors', 'leiden_res_1.20_colors', 'leiden_r0.20_s0', 'leiden_r0.20_s1', 'leiden_r0.20_s2', 'leiden_r0.20_s3', 'leiden_r0.20_s4', 'leiden_r0.20_s10', 'leiden_r0.20_s21', 'leiden_r0.20_s42', 'leiden_r0.20_s123', 'leiden_r0.20_s2026', 'leiden_r0.30_s0', 'leiden_r0.30_s1', 'leiden_r0.30_s2', 'leiden_r0.30_s3', 'leiden_r0.30_s4', 'leiden_r0.30_s10', 'leiden_r0.30_s21', 'leiden_r0.30_s42', 'leiden_r0.30_s123', 'leiden_r0.30_s2026', 'leiden_r0.40_s0', 'leiden_r0.40_s1', 'leiden_r0.40_s2', 'leiden_r0.40_s3', 'leiden_r0.40_s4', 'leiden_r0.40_s10', 'leiden_r0.40_s21', 'leiden_r0.40_s42', 'leiden_r0.40_s123', 'leiden_r0.40_s2026', 'leiden_r0.50_s0', 'leiden_r0.50_s1', 'leiden_r0.50_s2', 'leiden_r0.50_s3', 'leiden_r0.50_s4', 'leiden_r0.50_s10', 'leiden_r0.50_s21', 'leiden_r0.50_s42', 'leiden_r0.50_s123', 'leiden_r0.50_s2026', 'leiden_r0.60_s0', 'leiden_r0.60_s1', 'leiden_r0.60_s2', 'leiden_r0.60_s3', 'leiden_r0.60_s4', 'leiden_r0.60_s10', 'leiden_r0.60_s21', 'leiden_r0.60_s42', 'leiden_r0.60_s123', 'leiden_r0.60_s2026', 'leiden_r0.70_s0', 'leiden_r0.70_s1', 'leiden_r0.70_s2', 'leiden_r0.70_s3', 'leiden_r0.70_s4', 'leiden_r0.70_s10', 'leiden_r0.70_s21', 'leiden_r0.70_s42', 'leiden_r0.70_s123', 'leiden_r0.70_s2026', 'leiden_r0.80_s0', 'leiden_r0.80_s1', 'leiden_r0.80_s2', 'leiden_r0.80_s3', 'leiden_r0.80_s4', 'leiden_r0.80_s10', 'leiden_r0.80_s21', 'leiden_r0.80_s42', 'leiden_r0.80_s123', 'leiden_r0.80_s2026', 'leiden_r0.90_s0', 'leiden_r0.90_s1', 'leiden_r0.90_s2', 'leiden_r0.90_s3', 'leiden_r0.90_s4', 'leiden_r0.90_s10', 'leiden_r0.90_s21', 'leiden_r0.90_s42', 'leiden_r0.90_s123', 'leiden_r0.90_s2026', 'leiden_r1.00_s0', 'leiden_r1.00_s1', 'leiden_r1.00_s2', 'leiden_r1.00_s3', 'leiden_r1.00_s4', 'leiden_r1.00_s10', 'leiden_r1.00_s21', 'leiden_r1.00_s42', 'leiden_r1.00_s123', 'leiden_r1.00_s2026', 'leiden_r1.10_s0', 'leiden_r1.10_s1', 'leiden_r1.10_s2', 'leiden_r1.10_s3', 'leiden_r1.10_s4', 'leiden_r1.10_s10', 'leiden_r1.10_s21', 'leiden_r1.10_s42', 'leiden_r1.10_s123', 'leiden_r1.10_s2026', 'leiden_r1.20_s0', 'leiden_r1.20_s1', 'leiden_r1.20_s2', 'leiden_r1.20_s3', 'leiden_r1.20_s4', 'leiden_r1.20_s10', 'leiden_r1.20_s21', 'leiden_r1.20_s42', 'leiden_r1.20_s123', 'leiden_r1.20_s2026', 'immune_marker_detected_colors', 'non_immune_marker_detected_colors'
+    obsm: 'X_pca', 'X_pca_harmony', 'X_umap', 'score_ulm', 'padj_ulm'
+    layers: None (.X)
+2026-10-12 14:56:00,187 - INFO - Cell annotation 
+{'0': ['Plasma cells', 'Plasmacytoid dendritic cells', 'B cells'], '1': ['T cells', 'NK cells', 'Gamma delta T cells'], '10': ['Cholangiocytes', 'Basal cells', 'Mammary epithelial cells'], '11': ['NK cells', 'Gamma delta T cells', 'Macrophages'], '12': ['Endothelial cells', 'Podocytes', 'Pancreatic stellate cells'], '13': ['Adipocytes', 'Pancreatic stellate cells', 'Hepatic stellate cells'], '14': ['Cholangiocytes', 'Mammary epithelial cells', 'Luminal epithelial cells'], '15': ['Keratinocytes', 'Basal cells', 'Myoepithelial cells'], '16': ['Mast cells', 'Macrophages', 'Monocytes'], '2': ['B cells naive', 'B cells', 'Dendritic cells'], '3': ['Endothelial cells', 'Podocytes', 'Fibroblasts'], '4': ['Oligodendrocytes', 'T cells', 'Hepatocytes'], '5': ['Endothelial cells', 'Hepatic stellate cells', 'Pancreatic stellate cells'], '6': ['Plasmacytoid dendritic cells', 'Macrophages', 'Plasma cells'], '7': ['Mesangial cells', 'Hepatic stellate cells', 'Pericytes'], '8': ['Macrophages', 'Fibroblasts', 'Adipocytes'], '9': ['T cells', 'Dendritic cells', 'NK cells']}
+2026-10-12 14:56:00,187 - INFO - Immune-specific clusters 
+{'0': ['Plasma cells', 'Plasmacytoid dendritic cells', 'B cells'], '1': ['T cells', 'NK cells', 'Gamma delta T cells'], '11': ['NK cells', 'Gamma delta T cells', 'Macrophages'], '16': ['Mast cells', 'Macrophages', 'Monocytes'], '2': ['B cells naive', 'B cells', 'Dendritic cells'], '4': ['Oligodendrocytes', 'T cells', 'Hepatocytes'], '6': ['Plasmacytoid dendritic cells', 'Macrophages', 'Plasma cells'], '8': ['Macrophages', 'Fibroblasts', 'Adipocytes'], '9': ['T cells', 'Dendritic cells', 'NK cells']}
+2026-10-12 14:56:47,104 - INFO - Clustering Phase II - Stability 
+   res_low  res_high  n_clusters_low  n_clusters_high       ARI       NMI
+0      0.2       0.3               9                9  0.954254  0.954051
+1      0.3       0.4               9                9  0.993550  0.989501
+2      0.4       0.5               9               11  0.730092  0.834614
+3      0.5       0.6              11               11  0.956116  0.953983
+4      0.6       0.7              11               13  0.888458  0.920748
+5      0.7       0.8              13               13  0.958661  0.963799
+6      0.8       0.9              13               14  0.960680  0.963563
+7      0.9       1.0              14               15  0.789204  0.906893
+8      1.0       1.1              15               16  0.906525  0.926908
+9      1.1       1.2              16               19  0.796841  0.891575
+2026-10-12 14:58:15,752 - INFO - Clustering Phase I - Seed Stability 
+    resolutions  ARI_mean    ARI_sd   ARI_min  n_clusters_mean
+0           0.2  0.994840  0.003315  0.988000              9.0
+1           0.3  0.972374  0.017387  0.928597             10.0
+2           0.4  0.990701  0.002875  0.984399             11.0
+3           0.5  0.802891  0.078253  0.673676             12.9
+4           0.6  0.809117  0.081663  0.647442             14.0
+5           0.7  0.865331  0.044301  0.770687             15.7
+6           0.8  0.866098  0.046084  0.782724             17.1
+7           0.9  0.890455  0.033711  0.777786             17.2
+8           1.0  0.868202  0.034956  0.804627             18.2
+9           1.1  0.841957  0.046165  0.744282             19.0
+10          1.2  0.804204  0.046989  0.731369             20.3
+2026-10-12 14:58:37,207 - INFO - Marker gene score object 
+AnnData object with n_obs × n_vars = 10763 × 50
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb', 'n_genes', 'doublet_score', 'predicted_doublet', 'size_factors', 'leiden_res_0.20', 'leiden_res_0.30', 'leiden_res_0.40', 'leiden_res_0.50', 'leiden_res_0.60', 'leiden_res_0.70', 'leiden_res_0.80', 'leiden_res_0.90', 'leiden_res_1.00', 'leiden_res_1.10', 'leiden_res_1.20', 'leiden_r0.20_s0', 'leiden_r0.20_s1', 'leiden_r0.20_s2', 'leiden_r0.20_s3', 'leiden_r0.20_s4', 'leiden_r0.20_s10', 'leiden_r0.20_s21', 'leiden_r0.20_s42', 'leiden_r0.20_s123', 'leiden_r0.20_s2026', 'leiden_r0.30_s0', 'leiden_r0.30_s1', 'leiden_r0.30_s2', 'leiden_r0.30_s3', 'leiden_r0.30_s4', 'leiden_r0.30_s10', 'leiden_r0.30_s21', 'leiden_r0.30_s42', 'leiden_r0.30_s123', 'leiden_r0.30_s2026', 'leiden_r0.40_s0', 'leiden_r0.40_s1', 'leiden_r0.40_s2', 'leiden_r0.40_s3', 'leiden_r0.40_s4', 'leiden_r0.40_s10', 'leiden_r0.40_s21', 'leiden_r0.40_s42', 'leiden_r0.40_s123', 'leiden_r0.40_s2026', 'leiden_r0.50_s0', 'leiden_r0.50_s1', 'leiden_r0.50_s2', 'leiden_r0.50_s3', 'leiden_r0.50_s4', 'leiden_r0.50_s10', 'leiden_r0.50_s21', 'leiden_r0.50_s42', 'leiden_r0.50_s123', 'leiden_r0.50_s2026', 'leiden_r0.60_s0', 'leiden_r0.60_s1', 'leiden_r0.60_s2', 'leiden_r0.60_s3', 'leiden_r0.60_s4', 'leiden_r0.60_s10', 'leiden_r0.60_s21', 'leiden_r0.60_s42', 'leiden_r0.60_s123', 'leiden_r0.60_s2026', 'leiden_r0.70_s0', 'leiden_r0.70_s1', 'leiden_r0.70_s2', 'leiden_r0.70_s3', 'leiden_r0.70_s4', 'leiden_r0.70_s10', 'leiden_r0.70_s21', 'leiden_r0.70_s42', 'leiden_r0.70_s123', 'leiden_r0.70_s2026', 'leiden_r0.80_s0', 'leiden_r0.80_s1', 'leiden_r0.80_s2', 'leiden_r0.80_s3', 'leiden_r0.80_s4', 'leiden_r0.80_s10', 'leiden_r0.80_s21', 'leiden_r0.80_s42', 'leiden_r0.80_s123', 'leiden_r0.80_s2026', 'leiden_r0.90_s0', 'leiden_r0.90_s1', 'leiden_r0.90_s2', 'leiden_r0.90_s3', 'leiden_r0.90_s4', 'leiden_r0.90_s10', 'leiden_r0.90_s21', 'leiden_r0.90_s42', 'leiden_r0.90_s123', 'leiden_r0.90_s2026', 'leiden_r1.00_s0', 'leiden_r1.00_s1', 'leiden_r1.00_s2', 'leiden_r1.00_s3', 'leiden_r1.00_s4', 'leiden_r1.00_s10', 'leiden_r1.00_s21', 'leiden_r1.00_s42', 'leiden_r1.00_s123', 'leiden_r1.00_s2026', 'leiden_r1.10_s0', 'leiden_r1.10_s1', 'leiden_r1.10_s2', 'leiden_r1.10_s3', 'leiden_r1.10_s4', 'leiden_r1.10_s10', 'leiden_r1.10_s21', 'leiden_r1.10_s42', 'leiden_r1.10_s123', 'leiden_r1.10_s2026', 'leiden_r1.20_s0', 'leiden_r1.20_s1', 'leiden_r1.20_s2', 'leiden_r1.20_s3', 'leiden_r1.20_s4', 'leiden_r1.20_s10', 'leiden_r1.20_s21', 'leiden_r1.20_s42', 'leiden_r1.20_s123', 'leiden_r1.20_s2026', 'immune_marker_detected', 'non_immune_marker_detected', 'leiden_refined_res_0.20', 'leiden_refined_res_0.30', 'leiden_refined_res_0.40', 'leiden_refined_res_0.50', 'leiden_refined_res_0.60', 'leiden_refined_res_0.70', 'leiden_refined_res_0.80', 'leiden_refined_res_0.90', 'leiden_refined_res_1.00', 'leiden_refined_res_1.10', 'leiden_refined_res_1.20'
+    uns: 'HER2_colors', 'PR_colors', 'hvg', 'log1p', 'neighbors', 'pca', 'region_colors', 'sample_colors', 'scrublet', 'tumor_size_colors', 'tumor_volume_colors', 'umap', 'leiden_res_0.20', 'leiden_res_0.30', 'leiden_res_0.40', 'leiden_res_0.50', 'leiden_res_0.60', 'leiden_res_0.70', 'leiden_res_0.80', 'leiden_res_0.90', 'leiden_res_1.00', 'leiden_res_1.10', 'leiden_res_1.20', 'leiden_res_0.20_colors', 'leiden_res_0.30_colors', 'leiden_res_0.40_colors', 'leiden_res_0.50_colors', 'leiden_res_0.60_colors', 'leiden_res_0.70_colors', 'leiden_res_0.80_colors', 'leiden_res_0.90_colors', 'leiden_res_1.00_colors', 'leiden_res_1.10_colors', 'leiden_res_1.20_colors', 'leiden_r0.20_s0', 'leiden_r0.20_s1', 'leiden_r0.20_s2', 'leiden_r0.20_s3', 'leiden_r0.20_s4', 'leiden_r0.20_s10', 'leiden_r0.20_s21', 'leiden_r0.20_s42', 'leiden_r0.20_s123', 'leiden_r0.20_s2026', 'leiden_r0.30_s0', 'leiden_r0.30_s1', 'leiden_r0.30_s2', 'leiden_r0.30_s3', 'leiden_r0.30_s4', 'leiden_r0.30_s10', 'leiden_r0.30_s21', 'leiden_r0.30_s42', 'leiden_r0.30_s123', 'leiden_r0.30_s2026', 'leiden_r0.40_s0', 'leiden_r0.40_s1', 'leiden_r0.40_s2', 'leiden_r0.40_s3', 'leiden_r0.40_s4', 'leiden_r0.40_s10', 'leiden_r0.40_s21', 'leiden_r0.40_s42', 'leiden_r0.40_s123', 'leiden_r0.40_s2026', 'leiden_r0.50_s0', 'leiden_r0.50_s1', 'leiden_r0.50_s2', 'leiden_r0.50_s3', 'leiden_r0.50_s4', 'leiden_r0.50_s10', 'leiden_r0.50_s21', 'leiden_r0.50_s42', 'leiden_r0.50_s123', 'leiden_r0.50_s2026', 'leiden_r0.60_s0', 'leiden_r0.60_s1', 'leiden_r0.60_s2', 'leiden_r0.60_s3', 'leiden_r0.60_s4', 'leiden_r0.60_s10', 'leiden_r0.60_s21', 'leiden_r0.60_s42', 'leiden_r0.60_s123', 'leiden_r0.60_s2026', 'leiden_r0.70_s0', 'leiden_r0.70_s1', 'leiden_r0.70_s2', 'leiden_r0.70_s3', 'leiden_r0.70_s4', 'leiden_r0.70_s10', 'leiden_r0.70_s21', 'leiden_r0.70_s42', 'leiden_r0.70_s123', 'leiden_r0.70_s2026', 'leiden_r0.80_s0', 'leiden_r0.80_s1', 'leiden_r0.80_s2', 'leiden_r0.80_s3', 'leiden_r0.80_s4', 'leiden_r0.80_s10', 'leiden_r0.80_s21', 'leiden_r0.80_s42', 'leiden_r0.80_s123', 'leiden_r0.80_s2026', 'leiden_r0.90_s0', 'leiden_r0.90_s1', 'leiden_r0.90_s2', 'leiden_r0.90_s3', 'leiden_r0.90_s4', 'leiden_r0.90_s10', 'leiden_r0.90_s21', 'leiden_r0.90_s42', 'leiden_r0.90_s123', 'leiden_r0.90_s2026', 'leiden_r1.00_s0', 'leiden_r1.00_s1', 'leiden_r1.00_s2', 'leiden_r1.00_s3', 'leiden_r1.00_s4', 'leiden_r1.00_s10', 'leiden_r1.00_s21', 'leiden_r1.00_s42', 'leiden_r1.00_s123', 'leiden_r1.00_s2026', 'leiden_r1.10_s0', 'leiden_r1.10_s1', 'leiden_r1.10_s2', 'leiden_r1.10_s3', 'leiden_r1.10_s4', 'leiden_r1.10_s10', 'leiden_r1.10_s21', 'leiden_r1.10_s42', 'leiden_r1.10_s123', 'leiden_r1.10_s2026', 'leiden_r1.20_s0', 'leiden_r1.20_s1', 'leiden_r1.20_s2', 'leiden_r1.20_s3', 'leiden_r1.20_s4', 'leiden_r1.20_s10', 'leiden_r1.20_s21', 'leiden_r1.20_s42', 'leiden_r1.20_s123', 'leiden_r1.20_s2026', 'immune_marker_detected_colors', 'non_immune_marker_detected_colors', 'leiden_refined_res_0.20', 'leiden_refined_res_0.30', 'leiden_refined_res_0.40', 'leiden_refined_res_0.50', 'leiden_refined_res_0.60', 'leiden_refined_res_0.70', 'leiden_refined_res_0.80', 'leiden_refined_res_0.90', 'leiden_refined_res_1.00', 'leiden_refined_res_1.10', 'leiden_refined_res_1.20', 'leiden_refined_res_0.20_colors', 'leiden_refined_res_0.30_colors', 'leiden_refined_res_0.40_colors', 'leiden_refined_res_0.50_colors', 'leiden_refined_res_0.60_colors', 'leiden_refined_res_0.70_colors', 'leiden_refined_res_0.80_colors', 'leiden_refined_res_0.90_colors', 'leiden_refined_res_1.00_colors', 'leiden_refined_res_1.10_colors', 'leiden_refined_res_1.20_colors'
+    obsm: 'X_pca', 'X_pca_harmony', 'X_umap', 'score_ulm', 'padj_ulm'
+    layers: None (.X)
+2026-10-12 14:58:37,487 - INFO - Cell annotation 
+{'0': ['Plasma cells', 'Plasmacytoid dendritic cells', 'Mammary epithelial cells'], '1': ['T cells', 'Platelets', 'Germ cells'], '10': ['Mast cells', 'Endothelial cells', 'Pancreatic stellate cells'], '2': ['B cells naive', 'B cells', 'Dendritic cells'], '3': ['B cells naive', 'B cells', 'Plasma cells'], '4': ['NK cells', 'Gamma delta T cells', 'Platelets'], '5': ['Smooth muscle cells', 'Mammary epithelial cells', 'Podocytes'], '6': ['Plasmacytoid dendritic cells', 'Macrophages', 'Leydig cells'], '7': ['Macrophages', 'Dendritic cells', 'Endothelial cells'], '8': ['T cells', 'Mesangial cells', 'Neutrophils'], '9': ['Hepatic stellate cells', 'Fibroblasts', 'Pancreatic stellate cells']}
+2026-10-12 14:58:37,488 - INFO - Immune-specific clusters 
+{'0': ['Plasma cells', 'Plasmacytoid dendritic cells', 'Mammary epithelial cells'], '1': ['T cells', 'Platelets', 'Germ cells'], '2': ['B cells naive', 'B cells', 'Dendritic cells'], '3': ['B cells naive', 'B cells', 'Plasma cells'], '4': ['NK cells', 'Gamma delta T cells', 'Platelets'], '6': ['Plasmacytoid dendritic cells', 'Macrophages', 'Leydig cells'], '7': ['Macrophages', 'Dendritic cells', 'Endothelial cells'], '8': ['T cells', 'Mesangial cells', 'Neutrophils']}
+2026-10-12 14:59:13,040 - INFO - [3] Re-assessing QC
+2026-10-12 14:59:16,179 - INFO - [5] Saving adata object as .h5 file
+2026-10-12 15:01:02,450 - INFO - ------------ Completed Clustering ------------
