@@ -94,7 +94,7 @@ SC_EXP_SAVE_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_preprocessed
 #----------- GLOBAL VARIABLES -------
 
 SEED = 123
-SAMPLING_PCT = 0.6
+SAMPLING_PCT = 0.8
 
 MIN_GENES = 300     # minimum number of genes detected per cell
 MAX_GENES = 6000    # maximum number of genes detected per cell
@@ -777,10 +777,10 @@ for col1 in hvg_cols:
 sns.heatmap(
     overlap,
     annot=True,
-    fmt=".2f",cmap=NAVY_WHITE.reversed()
+    fmt=".2f",
+    cmap=NAVY_WHITE.reversed(),
     vmin=0,
-    vmax=1,
-    cmap=NAVY_WHITE.reversed()
+    vmax=1
 )
 fig = plt.gcf()
 labels = [col.replace("hvg_", "").capitalize() for col in hvg_cols]

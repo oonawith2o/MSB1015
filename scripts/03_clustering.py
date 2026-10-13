@@ -85,6 +85,7 @@ RESOURCE_FOLDER = Path("../results/clustering") / timestamp
 RESOURCE_FOLDER.mkdir(parents=True, exist_ok=True)
 
 SC_EXP_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_preprocessed.h5")
+SC_EXP_SAVE_FNAME_LEGACY = os.path.join(DATA_FOLDER, "processed_data/adata_clustered_legacy.h5")
 SC_EXP_SAVE_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_clustered.h5")
 
 #------------------------------------
@@ -217,7 +218,7 @@ IMMUNE_CELL_TYPE_MARKERS = {
     "Mast cells": ["TPSB2", "TPSAB1", "CPA3", "MS4A2", "KIT", "CMA1"],
     "Fibroblasts": ["COL1A1", "COL1A2", "COL3A1", "DCN", "LUM", "FAP", "PDGFRA"],
     "Endothelial cells": ["PECAM1", "VWF", "CLDN5", "CDH5", "EGFL7"],
-    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "KRT5"]
+    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "KRT5"],
 }
 
 #------------------------------------
@@ -241,7 +242,7 @@ logging.info(
 
 #---------- MARKER GENE CURATION ---------------
 
-logging.info("[4] Maker gene curation")
+logging.info("[2] Maker gene curation")
 
 markers_raw = dc.op.resource(
     name='PanglaoDB',
@@ -311,7 +312,7 @@ sc.pl.umap(
     adata,
     color=[f"leiden_res_{res:4.2f}" for res in RESOLUTIONS],
     legend_loc="on data",
-    ncols=2,
+    ncols=4,
     wspace=0.3,
     show=False
 )
@@ -336,8 +337,7 @@ plt.plot(
     color=MAIN_COLOR,
     marker="o"
 )
-plt.axvspan(0.3, 0.4, alpha=0.1, color=COLOR_PALETTE_2[1])
-plt.axvspan(0.8, 0.9, alpha=0.1, color=COLOR_PALETTE_2[1])
+plt.axvspan(0.4, 0.6, alpha=0.1, color=COLOR_PALETTE_2[1])
 plt.xlabel("Higher Resolution", fontsize=12, labelpad=10)
 plt.ylabel("Adjusted Rand Index (ARI)", fontsize=12, labelpad=10)
 plt.title("Leiden Resolution Sensitivity")
@@ -383,7 +383,6 @@ axes[0].set(
     title="Seed Stability across Resolutions",
     xlabel="Resolution",
     ylabel="Adjusted Rand Index (ARI)",
-    ylim=(0.75, 1.02)
 )
 axes[0].legend()
 sns.lineplot(
@@ -406,7 +405,7 @@ plt.tight_layout()
 savefig(RESOURCE_FOLDER / "leiden_resolution_seed_stability.jpg")
 
 # select leiden resolution 
-selected_resolution = 'leiden_res_0.30'
+selected_resolution = 'leiden_res_0.50'
 
 # immune and non-immune cell annotation 
 adata.var["immune_marker"] = (adata.var_names.isin(IMMUNE_MARKERS))
@@ -530,7 +529,7 @@ sc.pl.umap(
     adata_subset,
     color=[f"leiden_refined_res_{res:4.2f}" for res in RESOLUTIONS],
     legend_loc="on data",
-    ncols=2,
+    ncols=4,
     wspace=0.3,
     show=False
 )
@@ -555,8 +554,7 @@ plt.plot(
     color=MAIN_COLOR,
     marker="o"
 )
-plt.axvspan(0.3, 0.4, alpha=0.1, color=COLOR_PALETTE_2[1])
-plt.axvspan(0.8, 0.9, alpha=0.1, color=COLOR_PALETTE_2[1])
+plt.axvspan(0.4, 0.6, alpha=0.1, color=COLOR_PALETTE_2[1])
 plt.xlabel("Higher Resolution", fontsize=12, labelpad=10)
 plt.ylabel("Adjusted Rand Index (ARI)", fontsize=12, labelpad=10)
 plt.title("Leiden Resolution Sensitivity")
@@ -624,7 +622,7 @@ plt.tight_layout()
 savefig(RESOURCE_FOLDER / "leiden_refined_resolution_seed_stability.jpg")
 
 # select leiden resolution 
-selected_resolution = 'leiden_refined_res_0.40'
+selected_resolution = 'leiden_refined_res_0.60'
 
 # immune and non-immune cell annotation 
 adata_subset.var["immune_marker"] = (adata_subset.var_names.isin(IMMUNE_MARKERS))
@@ -800,14 +798,13 @@ sc.pp.calculate_qc_metrics(
     inplace=True
 )
 
-logging.info("[3] Re-assessing QC")
-
 # umap: metadata
 sc.pl.umap(
     adata_subset,
     color=["region", "patient", "sample"],
-    ncols=3,
-    wspace=0.4,
+    ncols=4,
+    wspace=0.2,
+    palette=COLOR_PALETTE_2,
     show=False
 )
 savefig(RESOURCE_FOLDER / "leiden_refined_umap_by_group.jpg")
@@ -821,8 +818,9 @@ sc.pl.umap(
         "pct_counts_mt",
         "log1p_n_genes_by_counts",
     ],
-    ncols=2,
-    wspace=0.4,
+    cmap=NAVY_WHITE.reversed(),
+    ncols=4,
+    wspace=0.2,
     show=False
 )
 savefig(RESOURCE_FOLDER / "leiden_refine_umap_by_metric.jpg")
@@ -855,13 +853,10 @@ cell_type_map = {
     "1": "Activated immune cells",
     "2": "Antigen-presenting cells",
     "3": "B cells",
-    "4": "Cytotoxic T/NK cells",
-    "5": "Mitochondrial-high cells",
-    "6": "Unresolved rare immune cells",
-    "7": "Myeloid/APC-like cells",
-    "8": "Activated T/NK cells",
-    "9": "Fibroblasts",
-    "10": "Mast cells"
+    "4": "Mitochondrial-high cells",
+    "5": "Activated lymphocytes",
+    "6": "Myeloid / APC-like cells",
+    "7": "Activated T cells",
 }
 
 adata_deg.obs[f"{selected_resolution}_original"] = (
@@ -881,7 +876,7 @@ adata_deg.obs[
 )
 
 logging.info(
-    "Cell Count of Cell Types \n%s"
+    "Cell Count of Cell Types \n%s",
     adata_deg.obs.groupby(
         [f"{selected_resolution}_original", "cell_type"],
         observed=True,
@@ -899,15 +894,120 @@ sc.pl.umap(
 )
 savefig(RESOURCE_FOLDER / "umap_with_cell_type.jpg")
 
+cell_type_counts = (
+    adata_deg.obs.groupby(["region", "cell_type"], observed=True)
+    .size()
+    .reset_index(name="n_cells")
+)
+
+cell_type_counts["abundance_pct"] = (
+    cell_type_counts["n_cells"]
+    / cell_type_counts.groupby("region")["n_cells"].transform("sum")
+    * 100
+)
+
+plt.figure(figsize=(12, 6))
+
+ax = sns.barplot(
+    data=cell_type_counts,
+    x="cell_type",
+    y="abundance_pct",
+    hue="region",
+    errorbar=None,
+    palette=[MAIN_COLOR, ACCENT_COLOR],
+)
+
+plt.ylabel("Relative abundance (%)")
+plt.xlabel("")
+plt.xticks(rotation=45, ha="right")
+handles, _ = ax.get_legend_handles_labels()
+
+ax.legend(
+    handles=handles,
+    labels=["Lymph node", "Primary tumor"],
+    title="Tissue",
+    loc="center left",
+    bbox_to_anchor=(1.02, 0.5),
+    borderaxespad=0,
+)
+plt.tight_layout()
+savefig(RESOURCE_FOLDER / "regions_specific_relative_abundance.jpg")
+
+cell_type_counts = (
+    adata_deg.obs.groupby(
+        ["sample", "patient", "region", "cell_type"],
+        observed=True,
+    )
+    .size()
+    .reset_index(name="n_cells")
+)
+
+cell_type_counts["abundance_pct"] = (
+    100 * cell_type_counts["n_cells"]
+    / cell_type_counts.groupby("sample")["n_cells"].transform("sum")
+)
+
+cell_types = cell_type_counts["cell_type"].dropna().unique()
+
+ncols = 4
+nrows = (len(cell_types) + ncols - 1) // ncols
+
+fig, axes = plt.subplots(
+    nrows, ncols,
+    figsize=(4 * ncols, 3 * nrows),
+    squeeze=False,
+)
+for ax, cell_type in zip(axes.flat, cell_types):
+    subset = cell_type_counts[cell_type_counts["cell_type"] == cell_type]
+
+    for patient, group in subset.groupby("patient", observed=True):
+        group = group.set_index("region")
+
+        if {"L", "T"}.issubset(group.index):
+            ax.plot(
+                [0, 1],
+                [
+                    group.loc["L", "abundance_pct"],
+                    group.loc["T", "abundance_pct"],
+                ],
+                color="gray",
+                alpha=0.7,
+                linewidth=1.5,
+            )
+
+            ax.scatter(
+                [0, 1],
+                [
+                    group.loc["L", "abundance_pct"],
+                    group.loc["T", "abundance_pct"],
+                ],
+                color=[MAIN_COLOR, ACCENT_COLOR],
+                s=45,
+                zorder=3,
+            )
+
+    ax.set_xticks([0, 1], ["Lymph node", "Primary tumor"])
+    ax.set_title(cell_type)
+    ax.set_ylabel("Relative abundance (%)")
+
+for ax in axes.flat[len(cell_types):]:
+    ax.set_visible(False)
+
+plt.tight_layout()
+savefig(RESOURCE_FOLDER / "matched_pair_comparison.jpg")
+
 # ============================================================
 # ----------------------- SAVE DATA --------------------------
 # ============================================================
 
-logging.info("[5] Saving adata object as .h5 file")
+adata_export = adata_deg.copy()
 
-adata_export = adata.copy()
+write_legacy_h5ad(adata_export, SC_EXP_SAVE_FNAME_LEGACY)
 
-write_legacy_h5ad(adata_export, SC_EXP_SAVE_FNAME)
+adata_export.write_h5ad(
+    SC_EXP_SAVE_FNAME,
+    compression="gzip",
+)
 
 logging.info("------------ Completed Clustering ------------") 
 
