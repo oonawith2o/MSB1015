@@ -1,3 +1,15 @@
+"""
+Project:    Metabolic Reprogramming of Immune Response during Early Breast Cancer Dessimination
+Script:     01_load_data.py 
+
+Author:     Oona Kintscher
+Created:    10.10.2026
+Version:    1.0.0
+
+"""
+
+#----------- LIBRARY IMPORT -----------
+
 import logging
 import time, os
 import harmonypy as hm
@@ -12,6 +24,10 @@ from pathlib import Path
 from adjustText import adjust_text
 from scipy.stats import median_abs_deviation
 from matplotlib.colors import LinearSegmentedColormap
+
+#------------------------------------
+
+#----------- TIME STAMP -----------
 
 timestamp = time.strftime('%Y%m%d')
 

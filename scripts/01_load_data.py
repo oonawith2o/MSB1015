@@ -1,15 +1,9 @@
 """
 Project:    Metabolic Reprogramming of Immune Response during Early Breast Cancer Dessimination
-Script:     01_load_data.py 
-
-Purpose:
-
-Input:
-
-Output:
+Script:     02_preprocessing.py 
 
 Author:     Oona Kintscher
-Created:    10.10.2026
+Created:    13.10.2026
 Version:    1.0.0
 
 """
