@@ -1,5 +1,0 @@
-source,target,weight,regulon,regulon_score,context
-E2F3,KTN1,2.5747910431879726,E2F3(+),3.0015953788145455,activating; metacluster_45.6.png
-E2F3,SGK3,1.7888744780927406,E2F3(+),3.0015953788145455,activating; metacluster_45.6.png
-E2F3,VRK2,1.6347849540346884,E2F3(+),3.0015953788145455,activating; metacluster_45.6.png
-E2F3,CPSF6,1.620636647514406,E2F3(+),3.0015953788145455,activating; metacluster_45.6.png
