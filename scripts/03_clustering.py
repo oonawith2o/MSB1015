@@ -1,104 +1,97 @@
-import logging
-import time, os
+"""
+Project:    Metabolic Reprogramming of Immune Response during Early Breast Cancer Dessimination
+Script:     03_clustering.py 
+
+Author:     Oona Kintscher
+Created:    17.10.2026
+
+"""
+
+# =============================================================================
+# IMPORTS
+# =============================================================================
+
 import pandas as pd
 import scanpy as sc
 import numpy as np
 import seaborn as sns
 import decoupler as dc
+import config.plotting as plot
 import matplotlib.pyplot as plt
+
 from itertools import combinations
-from pathlib import Path
-from matplotlib.colors import LinearSegmentedColormap
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
-timestamp = time.strftime('%Y%m%d')
-
-#----------- DESIGN SETUP -----------
-
-MAIN_COLOR = "#0E2841"
-ACCENT_COLOR = "#4E95D9"
-
-NAVY_WHITE = LinearSegmentedColormap.from_list(
-    "navy_white",
-    ["#0E2841", "#FFFFFF"]
+from config.plotting import (
+    MAIN_COLOR,
+    ACCENT_COLOR,
+    COLOR_PALETTE,
+    COLOR_PALETTE_2,
+    NAVY_WHITE
 )
 
-COLOR_PALETTE = sns.color_palette(
-    [NAVY_WHITE(x) for x in np.linspace(0,1,10)],
-    as_cmap=True
+from config.settings import (
+    SC_EXP_CLUSTERED_FNAME_LEGACY,
+    SC_EXP_PREPROCESSED_FNAME,
+    SC_EXP_CLUSTERED_FNAME,
+    CLUSTERING_DIR,
+    setup_logging
 )
 
-COLOR_PALETTE_2 = [
-    "#0072B2",  # Blue
-    "#E69F00",  # Orange
-    "#009E73",  # Bluish green
-    "#CC79A7",  # Reddish purple
-    "#56B4E9",  # Sky blue
-    "#D55E00",  # Vermilion
-    "#4D4D4D",  # Dark grey
-    "#332288",  # Indigo
-    "#88CCEE",  # Light cyan
-    "#44AA99",  # Teal
-    "#117733",  # Dark green
-    "#999933",  # Olive
-    "#DDCC77",  # Sand
-    "#AA4499",  # Purple
-    "#882255",  # Wine
-]
+# =============================================================================
+# SETUP LOGGER
+# =============================================================================
 
-sns.set_theme(
-    style="whitegrid",
-    context="notebook",
-    font_scale=1.05,
-    rc={
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.titleweight": "bold",
-        "axes.labelcolor": "#263746",
-        "xtick.color": "#465563",
-        "ytick.color": "#465563",
-        "grid.color": "#D9E1E8",
-        "grid.linestyle": "--",
-        "grid.linewidth": 0.6,
-    }
-)
+logger = setup_logging("03_clustering")
 
-#------------------------------------
+# =============================================================================
+# GLOBAL VARIABLES
+# =============================================================================
 
-#----------- LOGGER SETUP -----------
+SEED = 42
 
-logging.basicConfig(filename=f'../log/{timestamp}-03_clustering.log', filemode='w', 
-                    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+RESOLUTIONS = np.arange(0.2, 1.21, step=0.1)
 
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
-logging.getLogger("matplotlib.category").setLevel(logging.WARNING)
+MARKERS = ["PTPRC", "CD3D", "CD8A", "CD4", "CD79A", "LYZ", "PLVAP", "ACTA2", "KRT19"]
+IMMUNE_MARKERS = ["PTPRC", "CD3D", "CD3E", "MS4A1", "CD79A", "NKG7", "GNLY", "LST1", "LYZ"]
+NON_IMMUNE_MARKERS = ["EPCAM", "PECAM1", "COL1A1", "KRT19", "DCN", "VWF"]
+IMMUNE_CELLS = {
+    'Plasma cells',
+    'Plasmacytoid dendritic cells',
+    'B cells',
+    'T cells',
+    'NK cells',
+    'Dendritic cells',
+    'Macrophages',
+    'Neutrophils'
+}
+IMMUNE_CELL_TYPE_MARKERS = {
+    "B cells": ["MS4A1", "CD79A", "CD79B", "CD19", "BANK1", "CD22", "PAX5"],
+    "Plasma cells": [
+        "MZB1", "JCHAIN", "XBP1", "SDC1", "CD38", "TNFRSF17",
+        "DERL3", "IGHG1", "IGHA1"
+    ],
+    "T cells": ["CD3D", "CD3E", "CD3G", "TRAC", "CD2", "IL7R"],
+    "CD4 T cells": ["CD4", "IL7R", "CCR7", "TCF7", "SELL", "LEF1"],
+    "CD8 T cells": ["CD8A", "CD8B", "GZMK", "GZMB", "PRF1", "NKG7"],
+    "Tregs": ["FOXP3", "IL2RA", "CTLA4", "TIGIT", "IKZF2"],
+    "NK cells": [
+        "NCAM1", "NKG7", "GNLY", "KLRD1", "KLRF1", "KLRC1",
+        "XCL1", "PRF1"
+    ],
+    "Monocytes": ["LYZ", "S100A8", "S100A9", "VCAN", "FCN1", "CD14", "LST1"],
+    "Macrophages": ["CD68", "CD163", "MSR1", "MRC1", "FOLR2", "APOE", "C1QA", "C1QB"],
+    "Dendritic cells": ["FCER1A", "CD1C", "CLEC10A", "HLA-DQA1", "HLA-DPB1", "CD1E"],
+    "pDCs": ["IL3RA", "CLEC4C", "LILRA4", "TCF4", "SERPINF1", "GZMB", "DERL3"],
+    "Mast cells": ["TPSB2", "TPSAB1", "CPA3", "MS4A2", "KIT", "CMA1"],
+    "Fibroblasts": ["COL1A1", "COL1A2", "COL3A1", "DCN", "LUM", "FAP", "PDGFRA"],
+    "Endothelial cells": ["PECAM1", "VWF", "CLDN5", "CDH5", "EGFL7"],
+    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "KRT5"],
+}
 
-logging.info("----------- Starting clustering ------------") 
-
-#------------------------------------
-
-#----------- FILE NAMES -------------
-
-DATA_FOLDER = "../data"
-
-RESOURCE_FOLDER = Path("../results/clustering") / timestamp
-RESOURCE_FOLDER.mkdir(parents=True, exist_ok=True)
-
-SC_EXP_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_preprocessed.h5")
-SC_EXP_SAVE_FNAME_LEGACY = os.path.join(DATA_FOLDER, "processed_data/adata_clustered_legacy.h5")
-SC_EXP_SAVE_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_clustered.h5")
-
-#------------------------------------
-
-#----------- FUNCTIONS --------------
-
-def savefig(path):
-    plt.savefig(
-        path,
-        dpi=300,
-        bbox_inches="tight"
-    )
-    plt.close()
+# =============================================================================
+# FUNCTIONS
+# =============================================================================
 
 def remove_none_values(obj):
     if isinstance(obj, dict):
@@ -174,75 +167,30 @@ def compute_seed_stability(adata, TEST_RESOLUTIONS):
 
     return pd.DataFrame(seed_rows)
 
+# =============================================================================
+# MAIN WORKFLOW
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# 1. LOAD DATA
+# -----------------------------------------------------------------------------
 
-#------------------------------------
+logger.info("[1] Loading adata object") 
 
-#----------- GLOBAL VARIABLES -------
+adata = sc.read_h5ad(SC_EXP_PREPROCESSED_FNAME)
+logger.info("AnnData object:\n%s", adata)
 
-SEED = 42
-
-RESOLUTIONS = np.arange(0.2, 1.21, step=0.1)
-
-MARKERS = ["PTPRC", "CD3D", "CD8A", "CD4", "CD79A", "LYZ", "PLVAP", "ACTA2", "KRT19"]
-IMMUNE_MARKERS = ["PTPRC", "CD3D", "CD3E", "MS4A1", "CD79A", "NKG7", "GNLY", "LST1", "LYZ"]
-NON_IMMUNE_MARKERS = ["EPCAM", "PECAM1", "COL1A1", "KRT19", "DCN", "VWF"]
-IMMUNE_CELLS = {
-    'Plasma cells',
-    'Plasmacytoid dendritic cells',
-    'B cells',
-    'T cells',
-    'NK cells',
-    'Dendritic cells',
-    'Macrophages',
-    'Neutrophils'
-}
-IMMUNE_CELL_TYPE_MARKERS = {
-    "B cells": ["MS4A1", "CD79A", "CD79B", "CD19", "BANK1", "CD22", "PAX5"],
-    "Plasma cells": [
-        "MZB1", "JCHAIN", "XBP1", "SDC1", "CD38", "TNFRSF17",
-        "DERL3", "IGHG1", "IGHA1"
-    ],
-    "T cells": ["CD3D", "CD3E", "CD3G", "TRAC", "CD2", "IL7R"],
-    "CD4 T cells": ["CD4", "IL7R", "CCR7", "TCF7", "SELL", "LEF1"],
-    "CD8 T cells": ["CD8A", "CD8B", "GZMK", "GZMB", "PRF1", "NKG7"],
-    "Tregs": ["FOXP3", "IL2RA", "CTLA4", "TIGIT", "IKZF2"],
-    "NK cells": [
-        "NCAM1", "NKG7", "GNLY", "KLRD1", "KLRF1", "KLRC1",
-        "XCL1", "PRF1"
-    ],
-    "Monocytes": ["LYZ", "S100A8", "S100A9", "VCAN", "FCN1", "CD14", "LST1"],
-    "Macrophages": ["CD68", "CD163", "MSR1", "MRC1", "FOLR2", "APOE", "C1QA", "C1QB"],
-    "Dendritic cells": ["FCER1A", "CD1C", "CLEC10A", "HLA-DQA1", "HLA-DPB1", "CD1E"],
-    "pDCs": ["IL3RA", "CLEC4C", "LILRA4", "TCF4", "SERPINF1", "GZMB", "DERL3"],
-    "Mast cells": ["TPSB2", "TPSAB1", "CPA3", "MS4A2", "KIT", "CMA1"],
-    "Fibroblasts": ["COL1A1", "COL1A2", "COL3A1", "DCN", "LUM", "FAP", "PDGFRA"],
-    "Endothelial cells": ["PECAM1", "VWF", "CLDN5", "CDH5", "EGFL7"],
-    "Epithelial cells": ["EPCAM", "KRT8", "KRT18", "KRT19", "KRT5"],
-}
-
-#------------------------------------
-
-#####################################
-#------------- MAIN -----------------
-#####################################
-
-# ----------- LOAD DATA ---------- #
-
-logging.info("[1] Loading adata object") 
-
-adata = sc.read_h5ad(SC_EXP_FNAME)
-logging.info("AnnData object:\n%s", adata)
-
-logging.info(
+logger.info(
     "Initial dimensions: %d cells x %d genes",
     adata.n_obs,
     adata.n_vars,
 )
 
-#---------- MARKER GENE CURATION ---------------
+# -----------------------------------------------------------------------------
+# 2. MARKER GENE CURATION
+# -----------------------------------------------------------------------------
 
-logging.info("[2] Maker gene curation")
+logger.info("[2] Maker gene curation")
 
 markers_raw = dc.op.resource(
     name='PanglaoDB',
@@ -287,9 +235,13 @@ coverage = (
 valid_sources = coverage[coverage >= 3].index
 markers = markers[markers["source"].isin(valid_sources)].copy()
 
-logging.info("Marker overlap by cell type:\n%s", coverage)
+logger.info("Marker overlap by cell type:\n%s", coverage.head())
 
-# ----------- CLUSTERING - PHASE I ---------- #
+# -----------------------------------------------------------------------------
+# 3. BROAD CLUSTERING 
+# -----------------------------------------------------------------------------
+
+logger.info("[3] Broad clustering")
 
 sc.pp.neighbors(
     adata,
@@ -306,7 +258,7 @@ for res in RESOLUTIONS:
         random_state=SEED
     )
 
-sc.tl.umap(adata, random_state=SEED)
+sc.tl.umap(adata, min_dist=0.01, random_state=SEED)
 
 sc.pl.umap(
     adata,
@@ -316,39 +268,49 @@ sc.pl.umap(
     wspace=0.3,
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_umap_by_resolution.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_umap_by_resolution.jpg")
+
+# RESOLUTION STABILITY ANALYSIS ------------------------------------
+logger.info("[3A] Resolution Stability Analysis")
 
 stability = compare_clusterings(adata, RESOLUTIONS)
-logging.info(
+logger.info(
     "Clustering Phase I - Stability \n%s",
     stability
 )
 
-plt.figure(figsize=(8,4))
+fig = plt.figure(figsize=(10,4))
 plt.plot(
     stability["res_high"],
     stability["ARI"],
     color=ACCENT_COLOR,
-    marker="o"
+    marker="o",
+    label="Adjusted Rand Index (ARI)"
 )
 plt.plot(
     stability["res_high"],
     stability["NMI"],
     color=MAIN_COLOR,
-    marker="o"
+    marker="o",
+    label="Normalized Mutual Information (NMI)"
 )
-plt.axvspan(0.4, 0.6, alpha=0.1, color=COLOR_PALETTE_2[1])
-plt.xlabel("Higher Resolution", fontsize=12, labelpad=10)
-plt.ylabel("Adjusted Rand Index (ARI)", fontsize=12, labelpad=10)
+plt.axvspan(0.4, 0.5, alpha=0.1, color=COLOR_PALETTE_2[1], label="Selected Resolution Range")
+plt.xlabel("Higher Resolution", fontsize=14, labelpad=10)
+plt.ylabel("Adjusted Rand Index (ARI)", fontsize=14, labelpad=10)
 plt.title("Leiden Resolution Sensitivity")
 plt.ylim(-0.05,1.05)
 plt.grid(alpha=0.7)
-plt.tick_params(axis="both", labelsize=9)
+plt.tick_params(axis="both", labelsize=14)
+plt.legend(fontsize=14, frameon=False, loc="center left", bbox_to_anchor=(1.02, 0.5))
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "leiden_resolution_stability.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "leiden_resolution_stability.jpg")
+
+# SEED STABILITY ANALYSIS ------------------------------------
+logger.info("[3B] Seed Stability Analysis")
 
 seed_stability = compute_seed_stability(adata, RESOLUTIONS)
-logging.info(
+logger.info(
     "Clustering Phase I - Seed Stability \n%s",
     seed_stability
 )
@@ -361,6 +323,7 @@ sns.lineplot(
     marker="o",
     linewidth=2,
     label="Mean ARI",
+    color=MAIN_COLOR,
     ax=axes[0]
 )
 axes[0].fill_between(
@@ -368,6 +331,7 @@ axes[0].fill_between(
     seed_stability["ARI_mean"] - seed_stability["ARI_sd"],
     seed_stability["ARI_mean"] + seed_stability["ARI_sd"],
     alpha=0.2,
+    color=MAIN_COLOR,
     label="±1 SD"
 )
 sns.lineplot(
@@ -377,6 +341,7 @@ sns.lineplot(
     marker="s",
     linestyle="--",
     label="Minimum ARI",
+    color=ACCENT_COLOR,
     ax=axes[0]
 )
 axes[0].set(
@@ -391,7 +356,7 @@ sns.lineplot(
     y="n_clusters_mean",
     marker="o",
     linewidth=2,
-    color="darkorange",
+    color=ACCENT_COLOR,
     ax=axes[1]
 )
 axes[1].set(
@@ -399,10 +364,13 @@ axes[1].set(
     xlabel="Resolution",
     ylabel="Mean Number of Clusters"
 )
-plt.tick_params(axis="both", labelsize=9)
+plt.tick_params(axis="both", labelsize=14)
 plt.grid(alpha=0.7)
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "leiden_resolution_seed_stability.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "leiden_resolution_seed_stability.jpg")
+
+# MARKER GENE CLUSTER INVESTIGATION ------------------------------------
+logger.info("[3C] Marker gene cluster investigation")
 
 # select leiden resolution 
 selected_resolution = 'leiden_res_0.50'
@@ -447,20 +415,24 @@ sc.pl.umap(
     ax=axes[2],
     show=False
 )
+for ax in axes:
+    ax.set_xlabel("UMAP 1", fontsize=14, labelpad=10)
+    ax.set_ylabel("UMAP 2", fontsize=14, labelpad=10)
+    ax.tick_params(axis="both", labelsize=14)
+    ax.grid(False)
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "leiden_umap_by_marker.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "leiden_umap_by_marker.jpg")
 
-# marker gene scoring 
+# MARKER GENE SCORING ------------------------------------
+logger.info("[3D] Marker gene scoring")
+
 dc.mt.ulm(data=adata, net=markers, tmin=3)
 
 score_object = dc.pp.get_obsm(adata, key="score_ulm")
 
-logging.info(
-    "Marker gene score object \n%s",
-    score_object
-)
+# CLUSTER CELL-TYPE ANNOTATION ------------------------------------
+logger.info("[3E] Cluster cell-type annotation")
 
-# cell annotation 
 ranked_groups = dc.tl.rankby_group(
     adata=score_object, 
     groupby=selected_resolution, 
@@ -475,7 +447,7 @@ ranked_groups = (
 n_ctypes = 3
 ctypes_dict = ranked_groups.groupby("group", observed=True).head(n_ctypes).groupby("group", observed=True)["name"].apply(lambda x: list(x)).to_dict()
 
-logging.info(
+logger.info(
     "Cell annotation \n%s",
     ctypes_dict
 )
@@ -486,7 +458,7 @@ immune_clusters = {
     if any(cell in IMMUNE_CELLS for cell in cells)
 }
 
-logging.info(
+logger.info(
     "Immune-specific clusters \n%s",
     immune_clusters
 )
@@ -500,9 +472,14 @@ sc.pl.matrixplot(
     cmap=NAVY_WHITE.reversed(),
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_matrixplot_gene_annotation.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_matrixplot_gene_annotation.jpg")
 
-# ----------- CLUSTERING - PHASE II ---------- #
+# -----------------------------------------------------------------------------
+# 4. FINE CLUSTERING
+# -----------------------------------------------------------------------------
+
+logger.info("[4] Fine clustering")
 
 selected_clusters = set(map(str, immune_clusters.keys()))
 
@@ -533,15 +510,19 @@ sc.pl.umap(
     wspace=0.3,
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_refined_umap_by_resolution.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_umap_by_resolution.jpg")
+
+# RESOLUTION STABILITY ANALYSIS------------------------------------
+logger.info("[4A] Resolution stability analysis")
 
 stability = compare_clusterings(adata_subset, RESOLUTIONS)
-logging.info(
+logger.info(
     "Clustering Phase II - Stability \n%s",
     stability
 )
 
-plt.figure(figsize=(8,4))
+fig = plt.figure(figsize=(8,4))
 plt.plot(
     stability["res_high"],
     stability["ARI"],
@@ -555,18 +536,21 @@ plt.plot(
     marker="o"
 )
 plt.axvspan(0.4, 0.6, alpha=0.1, color=COLOR_PALETTE_2[1])
-plt.xlabel("Higher Resolution", fontsize=12, labelpad=10)
-plt.ylabel("Adjusted Rand Index (ARI)", fontsize=12, labelpad=10)
+plt.xlabel("Higher Resolution", fontsize=14, labelpad=10)
+plt.ylabel("Adjusted Rand Index (ARI)", fontsize=14, labelpad=10)
 plt.title("Leiden Resolution Sensitivity")
 plt.ylim(-0.05,1.05)
 plt.grid(alpha=0.7)
-plt.tick_params(axis="both", labelsize=9)
+plt.tick_params(axis="both", labelsize=14)
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "leiden_refined_resolution_stability.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_resolution_stability.jpg")
+
+# SEED STABILITY ANALYSIS------------------------------------
+logger.info("[4B] Seed stability analysis")
 
 seed_stability = compute_seed_stability(adata_subset, RESOLUTIONS)
-logging.info(
-    "Clustering Phase I - Seed Stability \n%s",
+logger.info(
+    "Clustering Phase II - Seed Stability \n%s",
     seed_stability
 )
 
@@ -616,10 +600,13 @@ axes[1].set(
     xlabel="Resolution",
     ylabel="Mean Number of Clusters"
 )
-plt.tick_params(axis="both", labelsize=9)
+plt.tick_params(axis="both", labelsize=14)
 plt.grid(alpha=0.7)
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "leiden_refined_resolution_seed_stability.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_resolution_seed_stability.jpg")
+
+# MARKER GENE CLUSTER INVESTIGATION------------------------------------
+logger.info("[4C] Marker gene cluster investigation")
 
 # select leiden resolution 
 selected_resolution = 'leiden_refined_res_0.60'
@@ -664,20 +651,24 @@ sc.pl.umap(
     ax=axes[2],
     show=False
 )
+for ax in axes:
+    ax.set_xlabel("UMAP 1", fontsize=14, labelpad=10)
+    ax.set_ylabel("UMAP 2", fontsize=14, labelpad=10)
+    ax.tick_params(axis="both", labelsize=14)
+    ax.grid(False)
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "leiden_refined_umap_by_marker.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_umap_by_marker.jpg")
 
-# marker gene scoring 
+# MARKER GENE SCORING ------------------------------------
+logger.info("[4D] Marker gene scoring ")
+
 dc.mt.ulm(data=adata_subset, net=markers, tmin=3)
 
 score_object = dc.pp.get_obsm(adata_subset, key="score_ulm")
 
-logging.info(
-    "Marker gene score object \n%s",
-    score_object
-)
+# CLUSTER CELL-TYPE ANNOTAION ------------------------------------
+logger.info("[4E] Cluster cell-type annotation") 
 
-# cell annotation 
 ranked_groups = dc.tl.rankby_group(
     adata=score_object, 
     groupby=selected_resolution, 
@@ -692,7 +683,7 @@ ranked_groups = (
 n_ctypes = 3
 ctypes_dict = ranked_groups.groupby("group").head(n_ctypes).groupby("group")["name"].apply(lambda x: list(x)).to_dict()
 
-logging.info(
+logger.info(
     "Cell annotation \n%s",
     ctypes_dict
 )
@@ -703,7 +694,7 @@ immune_clusters = {
     if any(cell in IMMUNE_CELLS for cell in cells)
 }
 
-logging.info(
+logger.info(
     "Immune-specific clusters \n%s",
     immune_clusters
 )
@@ -717,7 +708,8 @@ sc.pl.matrixplot(
     cmap=NAVY_WHITE.reversed(),
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_refined_matrixplot_gene_annotation.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_matrixplot_gene_annotation.jpg")
 
 adata_deg = adata_subset.copy()
 
@@ -744,7 +736,8 @@ sc.pl.rank_genes_groups(
     sharey=False,
     show=False,
 )
-savefig(RESOURCE_FOLDER / "leiden_refined_cluster_ranked_genes.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_cluster_ranked_genes.jpg")
 
 markers_df = sc.get.rank_genes_groups_df(
     adata_deg,
@@ -772,7 +765,7 @@ positive_markers = positive_markers.sort_values(
 )
 
 positive_markers.to_csv(
-    RESOURCE_FOLDER / "leiden_refined_cluster_positive_markers.csv",
+    CLUSTERING_DIR / "leiden_refined_cluster_positive_markers.csv",
     index=False,
 )
 
@@ -782,11 +775,15 @@ top_markers = (
     .head(5)
     .reset_index(drop=True)
 ).to_csv(
-    RESOURCE_FOLDER / "leiden_refined_cluster_top5_markers.csv",
+    CLUSTERING_DIR / "leiden_refined_cluster_top5_markers.csv",
     index=False
 )
 
-#---------- Re-Assess QC ---------------
+# -----------------------------------------------------------------------------
+# 5. RE-ASSESS QC METRICS
+# -----------------------------------------------------------------------------
+
+logger.info("[5] Re-assessing QC metrics")
 
 adata_deg.var["mt"] = (
     adata_deg.var_names.str.startswith("MT-")
@@ -807,7 +804,8 @@ sc.pl.umap(
     palette=COLOR_PALETTE_2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_refined_umap_by_group.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_umap_by_group.jpg")
 
 # umap: qc metrics
 sc.pl.umap(
@@ -818,14 +816,19 @@ sc.pl.umap(
         "pct_counts_mt",
         "log1p_n_genes_by_counts",
     ],
-    cmap=NAVY_WHITE.reversed(),
+    cmap="viridis",
     ncols=4,
     wspace=0.2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_refine_umap_by_metric.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refine_umap_by_metric.jpg")
 
-#---------- MARKER PATTERN VALIDATION ---------------
+# -----------------------------------------------------------------------------
+# 6. MARKER PATTERN VALIDATION
+# -----------------------------------------------------------------------------
+
+logger.info("[6] Marker pattern validatino")
 
 marker_genes = {
     cell_type: [
@@ -844,18 +847,23 @@ sc.pl.matrixplot(
     cmap=NAVY_WHITE.reversed(),
     show=False
 )
-savefig(RESOURCE_FOLDER / "leiden_refine_cluster_marker_gene_dotplot.jpg")
+fig = plt.gcf()
+plot.savefig(fig, CLUSTERING_DIR / "leiden_refine_cluster_marker_gene_dotplot.jpg")
 
-#---------- ASSIGN CELL TYPES ---------------
+# -----------------------------------------------------------------------------
+# 7. ASSIGNING CELL-TYPES
+# -----------------------------------------------------------------------------
+
+logger.info("[7] Assigning cell-types ")
 
 cell_type_map = {
     "0": "Plasma cells",
-    "1": "Activated immune cells",
+    "1": "Unresolved immune-cell population",
     "2": "Antigen-presenting cells",
     "3": "B cells",
     "4": "Mitochondrial-high cells",
-    "5": "Activated lymphocytes",
-    "6": "Myeloid / APC-like cells",
+    "5": "Activated immune cells",
+    "6": "Myeloid cells",
     "7": "Activated T cells",
 }
 
@@ -872,10 +880,10 @@ adata_deg.obs["cell_type"] = (
 adata_deg.obs[
     [f"{selected_resolution}_original", "cell_type"]
 ].to_csv(
-    RESOURCE_FOLDER / "leiden_refined_cell_type_annotations.csv"
+    CLUSTERING_DIR / "leiden_refined_cell_type_annotations.csv"
 )
 
-logging.info(
+logger.info(
     "Cell Count of Cell Types \n%s",
     adata_deg.obs.groupby(
         [f"{selected_resolution}_original", "cell_type"],
@@ -886,13 +894,28 @@ logging.info(
 sc.pl.umap(
     adata_deg,
     color="cell_type",
-    frameon=False,
-    ncols=2,
-    wspace=0.4,
     palette=COLOR_PALETTE_2,
-    show=False
+    show=False,
+    #add_outline=True,
+    #legend_loc="on data",
+    #legend_fontsize=12,
+    #legend_fontoutline=2,
+    frameon=False
 )
-savefig(RESOURCE_FOLDER / "umap_with_cell_type.jpg")
+fig = plt.gcf()
+ax = fig.axes[0]
+ax.set_xlabel("UMAP 1", fontsize=14, labelpad=10)
+ax.set_ylabel("UMAP 2", fontsize=14, labelpad=10)
+ax.tick_params(axis="both", labelsize=14)
+ax.set_title("")
+ax.grid(False)
+plot.savefig(fig, CLUSTERING_DIR / "umap_with_cell_type.jpg")
+
+# -----------------------------------------------------------------------------
+# 8. CELL-TYPE DISTRIBUTION INVESTIGATION
+# -----------------------------------------------------------------------------
+
+logger.info("[8] Cell-type distribution investigation")
 
 cell_type_counts = (
     adata_deg.obs.groupby(["region", "cell_type"], observed=True)
@@ -906,7 +929,7 @@ cell_type_counts["abundance_pct"] = (
     * 100
 )
 
-plt.figure(figsize=(12, 6))
+fig = plt.figure(figsize=(12, 6))
 
 ax = sns.barplot(
     data=cell_type_counts,
@@ -931,7 +954,7 @@ ax.legend(
     borderaxespad=0,
 )
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "regions_specific_relative_abundance.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "regions_specific_relative_abundance.jpg")
 
 cell_type_counts = (
     adata_deg.obs.groupby(
@@ -994,7 +1017,7 @@ for ax in axes.flat[len(cell_types):]:
     ax.set_visible(False)
 
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "matched_pair_comparison.jpg")
+plot.savefig(fig, CLUSTERING_DIR / "matched_pair_comparison.jpg")
 
 # ============================================================
 # ----------------------- SAVE DATA --------------------------
@@ -1002,12 +1025,12 @@ savefig(RESOURCE_FOLDER / "matched_pair_comparison.jpg")
 
 adata_export = adata_deg.copy()
 
-write_legacy_h5ad(adata_export, SC_EXP_SAVE_FNAME_LEGACY)
+write_legacy_h5ad(adata_export, SC_EXP_CLUSTERED_FNAME_LEGACY)
 
 adata_export.write_h5ad(
-    SC_EXP_SAVE_FNAME,
+    SC_EXP_CLUSTERED_FNAME,
     compression="gzip",
 )
 
-logging.info("------------ Completed Clustering ------------") 
+logger.info("------------ Completed Clustering ------------") 
 

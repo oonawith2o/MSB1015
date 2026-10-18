@@ -1,0 +1,34 @@
+2026-10-06 16:38:52,414 - INFO - ----------- Starting clustering ------------
+2026-10-06 16:38:52,414 - INFO - [1] Loading adata object
+2026-10-06 16:39:06,236 - INFO - AnnData object:
+AnnData object with n_obs × n_vars = 9536 × 27484
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb', 'n_genes', 'doublet_score', 'predicted_doublet', 'size_factors', 'leiden'
+    var: 'mt', 'ribo', 'hb', 'n_cells_by_counts', 'mean_counts', 'log1p_mean_counts', 'pct_dropout_by_counts', 'total_counts', 'log1p_total_counts', 'n_cells', 'highly_variable', 'highly_variable_rank', 'means', 'variances', 'variances_norm', 'highly_variable_nbatches', 'mean', 'std'
+    uns: 'hvg', 'leiden', 'leiden_colors', 'log1p', 'neighbors', 'patient_colors', 'pca', 'rank_genes_leiden', 'region_colors', 'sample_colors', 'scrublet', 'umap'
+    obsm: 'X_pca', 'X_pca_harmony', 'X_umap'
+    varm: 'PCs'
+    obsp: 'connectivities', 'distances'
+    layers: 'counts', None (.X)
+2026-10-06 16:39:06,239 - INFO - Initial dimensions: 9536 cells x 27484 genes
+2026-10-06 16:41:15,211 - INFO - [3] Re-assessing QC
+2026-10-06 16:41:19,614 - INFO - [4] Maker gene curation
+2026-10-06 16:41:20,975 - INFO - Marker gene set 
+                               source target
+                                            
+18   Pulmonary alveolar type II cells  ABCA3
+90                        Enterocytes  ACSL5
+105               Smooth muscle cells  ACTA2
+113               Smooth muscle cells  ACTG2
+114               Myoepithelial cells  ACTG2
+2026-10-06 16:41:42,167 - INFO - Marker gene score object 
+AnnData object with n_obs × n_vars = 9536 × 50
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb', 'n_genes', 'doublet_score', 'predicted_doublet', 'size_factors', 'leiden', 'leiden_res_0.02', 'leiden_res_0.05', 'leiden_res_0.10', 'leiden_res_0.25', 'leiden_res_0.50', 'leiden_res_0.75', 'leiden_res_1.00', 'leiden_res_1.50', 'leiden_res_2.00'
+    uns: 'hvg', 'leiden', 'leiden_colors', 'log1p', 'neighbors', 'patient_colors', 'pca', 'rank_genes_leiden', 'region_colors', 'sample_colors', 'scrublet', 'umap', 'leiden_res_0.02', 'leiden_res_0.05', 'leiden_res_0.10', 'leiden_res_0.25', 'leiden_res_0.50', 'leiden_res_0.75', 'leiden_res_1.00', 'leiden_res_1.50', 'leiden_res_2.00', 'leiden_res_0.02_colors', 'leiden_res_0.05_colors', 'leiden_res_0.10_colors', 'leiden_res_0.25_colors', 'leiden_res_0.50_colors', 'leiden_res_0.75_colors', 'leiden_res_1.00_colors', 'leiden_res_1.50_colors', 'leiden_res_2.00_colors'
+    obsm: 'X_pca', 'X_pca_harmony', 'X_umap', 'score_ulm', 'padj_ulm'
+    layers: None (.X)
+2026-10-06 16:41:42,459 - INFO - Cell annotation 
+{'0': ['Endothelial cells', 'Podocytes', 'Adipocytes'], '1': ['T cells', 'NK cells', 'Gamma delta T cells'], '2': ['B cells naive', 'B cells', 'Plasma cells'], '3': ['Hepatic stellate cells', 'Mesangial cells', 'Pericytes'], '4': ['Dendritic cells', 'Neutrophils', 'Macrophages'], '5': ['Mammary epithelial cells', 'Basal cells', 'Keratinocytes'], '6': ['Cholangiocytes', 'Mammary epithelial cells', 'Luminal epithelial cells']}
+2026-10-06 16:41:46,061 - INFO - Cluster annotation 
+{'0': 'Endothelial cells', '1': 'T cells', '2': 'B cells naive', '3': 'Hepatic stellate cells', '4': 'Dendritic cells', '5': 'Mammary epithelial cells', '6': 'Cholangiocytes'}
+2026-10-06 16:41:46,594 - INFO - [5] Saving adata object as .h5 file
+2026-10-06 16:42:55,465 - INFO - ------------ Completed Clustering ------------

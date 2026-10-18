@@ -1,0 +1,7 @@
+Biological process,STRING FDR,GO-BP FDR,STRING gene count,GO-BP gene count
+Endocytosis,1.28e-06,0.0053,49,68
+Epigenetic regulation of gene expression,1.83e-05,6.65e-11,51,63
+Cellular response to chemical stress,4.5e-05,8.74e-06,38,52
+Nucleocytoplasmic transport,0.00063,1.6e-05,22,47
+Autophagy,0.0059,3.8e-08,9,67
+Wnt signaling pathway,0.0138,0.0038,26,44

@@ -1,113 +1,52 @@
 """
 Project:    Metabolic Reprogramming of Immune Response during Early Breast Cancer Dessimination
-Script:     01_load_data.py 
+Script:     02_preprocessing.py 
 
 Author:     Oona Kintscher
-Created:    10.10.2026
-Version:    1.0.0
+Created:    17.10.2026
 
 """
 
-#----------- LIBRARY IMPORT -----------
+# =============================================================================
+# IMPORTS
+# =============================================================================
 
-import logging
-import time, os
 import harmonypy as hm
 import pandas as pd
 import scanpy as sc
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+
 from kennard_stone import train_test_split
 from itertools import combinations
-from pathlib import Path
 from adjustText import adjust_text
-from scipy.stats import median_abs_deviation
-from matplotlib.colors import LinearSegmentedColormap
+import config.plotting as plot
 
-#------------------------------------
-
-#----------- TIME STAMP -----------
-
-timestamp = time.strftime('%Y%m%d')
-
-#----------- DESIGN SETUP -----------
-
-MAIN_COLOR = "#0E2841"
-ACCENT_COLOR = "#4E95D9"
-
-NAVY_WHITE = LinearSegmentedColormap.from_list(
-    "navy_white",
-    ["#0E2841", "#FFFFFF"]
+from config.plotting import (
+    MAIN_COLOR,
+    ACCENT_COLOR,
+    COLOR_PALETTE,
+    COLOR_PALETTE_2,
+    NAVY_WHITE
 )
 
-COLOR_PALETTE = sns.color_palette(
-    [NAVY_WHITE(x) for x in np.linspace(0,1,10)],
-    as_cmap=True
+from config.settings import (
+    PREPROCESSING_DIR,
+    SC_EXP_RAW_FNAME,
+    SC_EXP_PREPROCESSED_FNAME,
+    setup_logging
 )
 
-COLOR_PALETTE_2 = [
-    "#0072B2",  # Blue
-    "#E69F00",  # Orange
-    "#009E73",  # Bluish green
-    "#CC79A7",  # Reddish purple
-    "#56B4E9",  # Sky blue
-    "#D55E00",  # Vermilion
-    "#4D4D4D",  # Dark grey
-    "#332288",  # Indigo
-    "#88CCEE",  # Light cyan
-    "#44AA99",  # Teal
-    "#117733",  # Dark green
-    "#999933",  # Olive
-    "#DDCC77",  # Sand
-    "#AA4499",  # Purple
-    "#882255",  # Wine
-]
+# =============================================================================
+# SETUP LOGGER
+# =============================================================================
 
-sns.set_theme(
-    style="whitegrid",
-    context="notebook",
-    font_scale=1.05,
-    rc={
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.titleweight": "bold",
-        "axes.labelcolor": "#263746",
-        "xtick.color": "#465563",
-        "ytick.color": "#465563",
-        "grid.color": "#D9E1E8",
-        "grid.linestyle": "--",
-        "grid.linewidth": 0.6,
-    }
-)
+logger = setup_logging("02_preprocessing")
 
-#------------------------------------
-
-#----------- LOGGER SETUP -----------
-
-logging.basicConfig(filename=f'../log/{timestamp}-02_preprocessing.log', filemode='w', 
-                    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
-logging.getLogger("matplotlib.category").setLevel(logging.WARNING)
-
-logging.info("------------ Starting preprocessing ------------") 
-
-#------------------------------------
-
-#----------- FILE NAMES -------------
-
-DATA_FOLDER = "../data"
-
-RESOURCE_FOLDER = Path("../results/preprocessing") / timestamp / "qc"
-RESOURCE_FOLDER.mkdir(parents=True, exist_ok=True)
-
-SC_EXP_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_raw.h5")
-SC_EXP_SAVE_FNAME = os.path.join(DATA_FOLDER, "processed_data/adata_preprocessed.h5")
-
-#------------------------------------
-
-#----------- GLOBAL VARIABLES -------
+# =============================================================================
+# GLOBAL VARIABLES
+# =============================================================================
 
 SEED = 123
 SAMPLING_PCT = 0.8
@@ -141,84 +80,21 @@ QC_METRICS_NAMES = {
 NUMBER_OF_VARIABLE_GENES = 4000
 
 PCA_COMPONENTS = ["1,2", "3,4", "1,4", "2,3"]
-COMPONENT_PAIRS = [(0, 1), (2, 3), (0, 3), (1, 2)]
 
-FIGSIZE = (15, 4.5)
+# =============================================================================
+# MAIN WORKFLOW
+# =============================================================================
 
-#------------------------------------
+# -----------------------------------------------------------------------------
+# 1. LOAD DATA
+# -----------------------------------------------------------------------------
 
-#----------- FUNCTIONS --------------
+logger.info("[1] Loading adata object") 
 
-def savefig(path):
-    plt.savefig(
-        path,
-        dpi=300,
-        bbox_inches="tight",
-    )
-    plt.close()
+adata = sc.read_h5ad(SC_EXP_RAW_FNAME)
+logger.info("AnnData object:\n%s", adata)
 
-def is_outlier(adata, metric: str, nmads: int):
-    M = adata.obs[metric]
-    outlier = (M < np.median(M) - nmads * median_abs_deviation(M)) | (
-        np.median(M) + nmads * median_abs_deviation(M) < M
-    )
-    return outlier
-
-def style_pca_figure(fig, adata_pca):
-    fig.set_size_inches(*FIGSIZE)
-
-    variance = adata_pca.uns["pca"]["variance_ratio"] * 100
-
-    pca_axes = [
-        ax for ax in fig.axes
-        if ax.get_visible()
-        and ax.get_xlabel().startswith("PC")
-        and ax.get_ylabel().startswith("PC")
-    ]
-
-    if len(pca_axes) != len(COMPONENT_PAIRS):
-        pca_axes = [
-            ax for ax in fig.axes
-            if ax.get_visible() and ax.has_data()
-        ][:len(COMPONENT_PAIRS)]
-
-    for ax, (pc_x, pc_y) in zip(pca_axes, COMPONENT_PAIRS):
-        ax.set_title("")
-
-        ax.set_xlabel(
-            f"PC{pc_x + 1} ({variance[pc_x]:.2f}%)",
-            fontsize=12,
-            labelpad=8,
-        )
-        ax.set_ylabel(
-            f"PC{pc_y + 1} ({variance[pc_y]:.2f}%)",
-            fontsize=12,
-            labelpad=8,
-        )
-
-        ax.tick_params(axis="both", labelsize=9)
-        ax.grid(axis="both", alpha=0.35, linewidth=0.6)
-        ax.set_axisbelow(True)
-
-        ax.spines["top"].set_visible(False)
-        ax.spines["right"].set_visible(False)
-
-    return pca_axes
-
-#------------------------------------
-
-#####################################
-#------------- MAIN -----------------
-#####################################
-
-# ----------- LOAD DATA ---------- #
-
-logging.info("[1] Loading adata object") 
-
-adata = sc.read_h5ad(SC_EXP_FNAME)
-logging.info("AnnData object:\n%s", adata)
-
-logging.info(
+logger.info(
     "Initial dimensions: %d cells x %d genes",
     adata.n_obs,
     adata.n_vars,
@@ -245,21 +121,47 @@ for ax, metric in zip(axes, QC_METRICS):
                 alpha=0.95,
                 ax=ax
         )
-    ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=12, labelpad=10)
-    ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
-    ax.tick_params(axis="x", bottom=True, labelsize=9)
-    ax.tick_params(axis="y", labelsize=9)
+    ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=14, labelpad=10)
+    ax.set_ylabel("Number of Barcodes", fontsize=14, labelpad=10)
+    ax.tick_params(axis="x", bottom=True, labelsize=14)
+    ax.tick_params(axis="y", labelsize=14)
     ax.grid(axis="y", alpha=0.7)
     ax.grid(axis="x", visible=False)
 axes[0].axvspan(MIN_GENES, MAX_GENES, alpha=0.1, color=ACCENT_COLOR)
+axes[0].text(
+    0.5, -0.35,
+    f"Threshold: {MIN_GENES:,}-{MAX_GENES:,}",
+    transform=axes[0].transAxes,
+    ha="center", va="top",
+    color=ACCENT_COLOR, fontsize=14,
+    fontweight="bold"
+)
 axes[1].axvspan(MIN_CELLS, adata.var["n_cells_by_counts"].max(), alpha=0.1, color=ACCENT_COLOR)
+axes[1].text(
+    0.5, -0.35,
+    f"Minimum: {MIN_CELLS:,} cells",
+    transform=axes[1].transAxes,
+    ha="center", va="top",
+    color=ACCENT_COLOR, fontsize=14,
+    fontweight="bold"
+)
 axes[2].axvspan(0, MT_CUTOFF, alpha=0.1, color=ACCENT_COLOR)
+axes[2].text(
+    0.5, -0.35,
+    f"Maximum: {MT_CUTOFF}%",
+    transform=axes[2].transAxes,
+    ha="center", va="top",
+    color=ACCENT_COLOR, fontsize=14,
+    fontweight="bold"
+)
 fig.tight_layout()
-savefig(RESOURCE_FOLDER / "filtering_panel_histplot_pre_filter.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "filtering_panel_histplot_pre_filter.jpg")
 
-#---------- FILTERING CELLS AND GENES  ----------
+# -----------------------------------------------------------------------------
+# 2. FILTERING GENES AND CELLS
+# -----------------------------------------------------------------------------
 
-logging.info("[2] Filtering Cells and Genes") 
+logger.info("[2] Filtering Cells and Genes") 
 
 n_cells_before = adata.n_obs
 n_genes_before = adata.n_vars
@@ -277,7 +179,7 @@ removed_pct = (
     / n_genes_before
 )
 
-logging.info(
+logger.info(
     "Genes: %d --> %d "
     "(removed: %d, %.3f%%)",
     n_genes_before,
@@ -300,7 +202,7 @@ removed_pct = (
     / n_cells_before
 )
 
-logging.info(
+logger.info(
     "Cells: %d --> %d "
     "(removed: %d, %.3f%%)",  
     n_cells_before,
@@ -309,9 +211,11 @@ logging.info(
     removed_pct
 )
 
-#---------- MITOCHONDRIAL PERCENTAGE CUTOFF  ----------
+# -----------------------------------------------------------------------------
+# 3. MITOCHONDRIAL PERCENTAGE CUTOFF
+# -----------------------------------------------------------------------------
 
-logging.info("[3] Filtering cells with mitochondrial percentage")
+logger.info("[3] Filtering cells with mitochondrial percentage")
 
 n_cells_before_mt = adata.n_obs
 
@@ -330,7 +234,7 @@ removed_pct = (
     / n_cells_before_mt
 )
 
-logging.info(
+logger.info(
     "Cells after mitochondrial filtering: %d --> %d "
     "(removed: %d, %.3f%%)",
     n_cells_before_mt,
@@ -339,7 +243,11 @@ logging.info(
     removed_pct
 )
 
-#---------- RECOMPUTE QC METRICS ----------
+# -----------------------------------------------------------------------------
+# 4. RECOMPUTE QC METRICS
+# -----------------------------------------------------------------------------
+
+logger.info("[4] Recomputing QC metrics")
 
 # mitochondrial Genes
 adata.var["mt"] = adata.var_names.str.startswith("MT-")
@@ -350,8 +258,13 @@ adata.var["hb"] = adata.var_names.str.contains(r"^HB[ABDEGMQZ]\d*(?!\w)")
 
 sc.pp.calculate_qc_metrics(adata, qc_vars=["mt", "ribo", "hb"], inplace=True, percent_top=[20], log1p=True)
 
-#---------- THREE-PANEL SUMMARY PLOTS ----------
+# -----------------------------------------------------------------------------
+# 5.  QC METRIC DISTRIBUTION AFTER FILTERING
+# -----------------------------------------------------------------------------
 
+logger.info("[5] Generating QC metric distribution plots after filtering")
+
+# overall distribution
 fig, axes = plt.subplots(1,3,figsize=(15, 4))
 for ax, metric in zip(axes, QC_METRICS):
     if metric == "n_cells_by_counts":
@@ -370,82 +283,28 @@ for ax, metric in zip(axes, QC_METRICS):
                 alpha=0.95,
                 ax=ax
         )
-    ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=12, labelpad=10)
-    ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
-    ax.tick_params(axis="x", bottom=True, labelsize=9)
-    ax.tick_params(axis="y", labelsize=9)
+    ax.set_xlabel(QC_METRICS_NAMES[metric], fontsize=14, labelpad=10)
+    ax.set_ylabel("Number of Barcodes", fontsize=14, labelpad=10)
+    ax.tick_params(axis="x", bottom=True, labelsize=14)
+    ax.tick_params(axis="y", labelsize=14)
     ax.grid(axis="y", alpha=0.7)
     ax.grid(axis="x", visible=False)
 fig.tight_layout()
-savefig(RESOURCE_FOLDER / "filtering_panel_histplot_post_filter.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "filtering_panel_histplot_post_filter.jpg")
 
-COUNT_METRICS = ["total_counts", "n_genes_by_counts"]
+plot.plot_qc_violinplots(adata, PREPROCESSING_DIR, "_post_filtering")
 
-for group in QC_GROUPS:
+# -----------------------------------------------------------------------------
+# 6.  DOUBLET DETECTION & FILTERING
+# -----------------------------------------------------------------------------
 
-    n_metrics = len(QC_OBS_METRICS)
-    fig, axes = plt.subplots(
-        1,
-        n_metrics,
-        figsize=(5 * n_metrics, 4),
-        squeeze=False,
-    )
-    axes = axes.ravel()
-    fig.set_dpi(300)
-
-    for ax, metric in zip(axes, QC_OBS_METRICS):
-
-        plot_data = adata.obs[[group, metric]].dropna().copy()
-
-        if metric in COUNT_METRICS:
-            upper = plot_data[metric].quantile(0.99)
-            plot_data = plot_data[plot_data[metric] <= upper]
-
-        sns.violinplot(
-            data=plot_data,
-            x=group,
-            y=metric,
-            palette=COLOR_PALETTE,
-            linewidth=1, 
-            linecolor="k",
-            inner = None,
-            ax=ax
-        )
-
-        if metric in COUNT_METRICS:
-            ax.set_yscale("log")
-            ax.set_ylim(bottom=1)
-
-        ax.set_xlabel("")
-        ax.set_ylabel(
-            QC_METRICS_NAMES.get(metric, "Value"),
-            fontsize=12,
-            labelpad=10
-        )
-        ax.tick_params(axis="x", bottom=True, labelsize=9)
-        ax.tick_params(axis="y", labelsize=9)
-        ax.grid(axis="y", alpha=0.7)
-        ax.grid(axis="x", visible=False)
-
-    fig.suptitle(
-        f"QC Metrics by {group.replace('_', ' ').title()}",
-        fontsize=14,
-        fontweight="bold",
-        color=MAIN_COLOR,
-        y=1.03,
-    )
-    fig.tight_layout()
-    savefig(RESOURCE_FOLDER / f"qc_violin_{group}_post_filter.jpg")
-
-#---------- DOUBLET DETECTION AND FILTERING  ----------
-
-logging.info("[4] Doublet detection") 
+logger.info("[6] Doublet detection and filtering") 
 
 n_cells_before_doublet = adata.n_obs
 
 sc.pp.scrublet(adata, batch_key="sample")
 
-logging.info(
+logger.info(
     "Scrublet score distribution:\n%s",
     adata.obs["doublet_score"].describe(
         percentiles=[0.50, 0.90, 0.95, 0.99, 0.999]
@@ -459,20 +318,20 @@ sns.histplot(
     alpha=0.95,
     ax=ax
 )
-ax.tick_params(axis="x", bottom=True, labelsize=9)
-ax.tick_params(axis="y", labelsize=9)
+ax.tick_params(axis="x", bottom=True, labelsize=14)
+ax.tick_params(axis="y", labelsize=14)
 ax.grid(axis="y", alpha=0.7)
 ax.grid(axis="x", visible=False)
-ax.set_xlabel("Doublet Score", fontsize=12, labelpad=10)
-ax.set_ylabel("Number of Barcodes", fontsize=12, labelpad=10)
+ax.set_xlabel("Doublet Score", fontsize=14, labelpad=10)
+ax.set_ylabel("Number of Barcodes", fontsize=14, labelpad=10)
 fig.tight_layout()
-savefig(RESOURCE_FOLDER / "doublet_score_distribution.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "doublet_score_distribution.jpg")
 
 # overall doublet summary
 n_doublets = int(adata.obs["predicted_doublet"].sum())
 doublet_pct = 100.0 * n_doublets / n_cells_before_doublet
 
-logging.info(
+logger.info(
     "Predicted doublets: %d / %d (%.3f%%)",
     n_doublets,
     n_cells_before_doublet,
@@ -495,7 +354,7 @@ doublet_summary["doublet_pct"] = (
     / doublet_summary["n_cells"]
 )
 
-logging.info(
+logger.info(
     "Doublet summary by sample:\n%s",
     doublet_summary.to_string(),
 )
@@ -516,7 +375,7 @@ removed_pct = (
     / n_cells_before_doublet
 )
 
-logging.info(
+logger.info(
     "Cells after doublet filtering: %d --> %d "
     "(removed: %d, %.3f%%)",
     n_cells_before_doublet,
@@ -525,14 +384,15 @@ logging.info(
     removed_pct,
 )
 
-#---------- PRESERVE RAW COUNTS ---------------
+# -----------------------------------------------------------------------------
+# 7.  NORMALIZATION AND LOGARITHMIZING
+# -----------------------------------------------------------------------------
 
+logger.info("[7] Normalization and log transformation") 
+
+# preserving raw counts
 adata.layers["counts"] = adata.X.copy()
 adata.raw = adata.copy()
-
-#---------- NORMALIZATION ---------------
-
-logging.info("[5] Normalization and log transformation") 
 
 # normalizing to median total counts and add size factor
 # - makes data comparable across cells and mitigate the influence of cell-specific biases
@@ -543,9 +403,11 @@ adata.obs['size_factors'] = adata.obs.total_counts / np.median(adata.obs.total_c
 # logarithmize the data
 sc.pp.log1p(adata)
 
-#---------- HIGHLY VARIABLE GENES ---------------
+# -----------------------------------------------------------------------------
+# 8.  HIGHLY VARIABLE GENES
+# -----------------------------------------------------------------------------
 
-logging.info("[6] Highly variable genes") 
+logger.info("[8] Highly variable genes") 
 
 strategies = {
     "pooled": None,
@@ -567,7 +429,7 @@ for name, batch_key in strategies.items():
     gene_labels_rank = (
         adata.var.loc[adata.var["highly_variable"]]
         .sort_values("highly_variable_rank", ascending=True)
-        .head(5).index
+        .head(2).index
     )
 
     sc.pl.highly_variable_genes(adata, show=False)
@@ -583,7 +445,7 @@ for name, batch_key in strategies.items():
         texts1.append(
             ax1.text(
                 row["means"], row["variances_norm"], gene,
-                fontsize=10, color=ACCENT_COLOR,
+                fontsize=14, color=ACCENT_COLOR,
                 bbox=dict(
                     boxstyle="round,pad=0.3",
                     facecolor="white",
@@ -596,7 +458,7 @@ for name, batch_key in strategies.items():
         texts2.append(
             ax2.text(
                 row["means"], row["variances"], gene,
-                fontsize=10, color=ACCENT_COLOR,
+                fontsize=14, color=ACCENT_COLOR,
                 bbox=dict(
                     boxstyle="round,pad=0.3",
                     facecolor="white",
@@ -626,28 +488,28 @@ for name, batch_key in strategies.items():
         title_fontproperties={"weight": "bold"},
         bbox_to_anchor=(1.02, 0.5),
         borderaxespad=0,
-        fontsize=10
+        fontsize=14
     )
 
     for ax in (ax1, ax2):
-        ax.tick_params(axis="both", labelsize=9)
+        ax.tick_params(axis="both", labelsize=14)
         ax.grid(axis="both", alpha=0.7)
-        ax.set_xlabel("Mean Expression of Genes", fontsize=12, labelpad=10)
-    ax1.set_ylabel("Variances of Genes (normalized)", fontsize=12, labelpad=10)
-    ax2.set_ylabel("Variances of Genes (not normalized)", fontsize=12, labelpad=10)
+        ax.set_xlabel("Mean Expression of Genes", fontsize=14, labelpad=10)
+    ax1.set_ylabel("Variances of Genes (normalized)", fontsize=14, labelpad=10)
+    ax2.set_ylabel("Variances of Genes (not normalized)", fontsize=14, labelpad=10)
     fig.tight_layout()
-    savefig(RESOURCE_FOLDER / f"highly_variable_genes_by_{name}.jpg")
+    plot.savefig(fig, PREPROCESSING_DIR / f"highly_variable_genes_by_{name}.jpg")
 
     gene_labels_var = (
         adata.var.loc[adata.var["highly_variable"]]
         .sort_values("variances", ascending=False)
-        .head(5).index
+        .head(2).index
     )
 
     gene_labels_var_norm = (
         adata.var.loc[adata.var["highly_variable"]]
         .sort_values("variances_norm", ascending=False)
-        .head(5).index
+        .head(2).index
     )
 
     sc.pl.highly_variable_genes(adata, show=False)
@@ -663,7 +525,7 @@ for name, batch_key in strategies.items():
         texts1.append(
             ax1.text(
                 row["means"], row["variances_norm"], gene,
-                fontsize=10, color=ACCENT_COLOR,
+                fontsize=14, color=ACCENT_COLOR,
                 bbox=dict(
                     boxstyle="round,pad=0.3",
                     facecolor="white",
@@ -679,7 +541,7 @@ for name, batch_key in strategies.items():
         texts2.append(
             ax2.text(
                 row["means"], row["variances"], gene,
-                fontsize=10, color=ACCENT_COLOR,
+                fontsize=14, color=ACCENT_COLOR,
                 bbox=dict(
                     boxstyle="round,pad=0.3",
                     facecolor="white",
@@ -712,16 +574,16 @@ for name, batch_key in strategies.items():
         title_fontproperties={"weight": "bold"},
         bbox_to_anchor=(1.02, 0.5),
         borderaxespad=0,
-        fontsize=10
+        fontsize=14
     )
     for ax in (ax1, ax2):
-        ax.tick_params(axis="both", labelsize=9)
+        ax.tick_params(axis="both", labelsize=14)
         ax.grid(axis="both", alpha=0.7)
-        ax.set_xlabel("Mean Expression of Genes", fontsize=12, labelpad=10)
-    ax1.set_ylabel("Variances of Genes (normalized)", fontsize=12, labelpad=10)
-    ax2.set_ylabel("Variances of Genes (not normalized)", fontsize=12, labelpad=10)
+        ax.set_xlabel("Mean Expression of Genes", fontsize=14, labelpad=10)
+    ax1.set_ylabel("Variances of Genes (normalized)", fontsize=14, labelpad=10)
+    ax2.set_ylabel("Variances of Genes (not normalized)", fontsize=14, labelpad=10)
     plt.tight_layout()
-    savefig(RESOURCE_FOLDER / f"highly_variable_genes_by_{name}_with_labels.jpg")
+    plot.savefig(fig, PREPROCESSING_DIR / f"highly_variable_genes_by_{name}_with_labels.jpg")
 
     cols = [
         "highly_variable",
@@ -731,24 +593,24 @@ for name, batch_key in strategies.items():
         "highly_variable_nbatches",
     ]
     
-    logging.info(
+    logger.info(
         "========== HVG by %s ==========",
         name
     )
 
-    logging.info(
+    logger.info(
         "Overview of HVG \n%s", 
         adata.var[
             ["means", "variances", "variances_norm", "highly_variable"]
         ].describe().to_string()
     )
-    logging.info(
+    logger.info(
         "Overview of Top-Ranked HVGs \n%s",
         adata.var[
             [c for c in cols if c in adata.var.columns]
         ].sort_values("highly_variable_rank").head(20).to_string()
     )
-    logging.info(
+    logger.info(
         "Genes w/ largest Variance \n%s",
         adata.var.nlargest(10, "variances")[
             ["means", "variances", "highly_variable"]
@@ -756,8 +618,7 @@ for name, batch_key in strategies.items():
     )
     adata.var[f"hvg_{name}"] = adata.var["highly_variable"].copy()
 
-# Investigate Overlap Between HVG
-
+# investigate overlap between HVG
 hvg_cols = [
     "hvg_pooled",
     "hvg_region",
@@ -772,10 +633,10 @@ for col1, col2 in combinations(hvg_cols, 2):
     intersection = set1 & set2
     union = set1 | set2
 
-    logging.info(f"--- {col1} vs {col2} ---")
-    logging.info(f"Shared genes: {len(intersection)}")
-    logging.info(f"Jaccard similarity: {len(intersection) / len(union):.3f}")
-    logging.info(f"Fraction of overlapping: {len(set1 & set2) / len(set1):.1%}")
+    logger.info(f"--- {col1} vs {col2} ---")
+    logger.info(f"Shared genes: {len(intersection)}")
+    logger.info(f"Jaccard similarity: {len(intersection) / len(union):.3f}")
+    logger.info(f"Fraction of overlapping: {len(set1 & set2) / len(set1):.1%}")
 
 overlap = pd.DataFrame(
     index=hvg_cols,
@@ -800,14 +661,18 @@ sns.heatmap(
 )
 fig = plt.gcf()
 labels = [col.replace("hvg_", "").capitalize() for col in hvg_cols]
-fig.axes[0].set_xticklabels(labels)
-fig.axes[0].set_yticklabels(labels, rotation=0)
-fig.axes[0].set_xlabel("HVG Selection Method by Batch Key", fontsize=12, labelpad=10)
-plt.title("HVG Set Overlap")
+fig.axes[0].set_xticklabels(labels, fontsize=14)
+fig.axes[0].set_yticklabels(labels, rotation=0, fontsize=14)
+fig.axes[0].set_xlabel("HVG Selection Method by Batch Key", fontsize=14)
+plt.title("HVG Set Overlap", fontsize=14)
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "hvg_overlap_heatmap.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "hvg_overlap_heatmap.jpg")
 
-#---------- MOST ABUNDANT GENES ---------------
+# -----------------------------------------------------------------------------
+# 9.  MOST ABUNDANT GENES
+# -----------------------------------------------------------------------------
+
+logger.info("[9] Most abundant genes") 
 
 X = adata.layers["counts"]
 gene_counts = np.asarray(adata.layers["counts"].sum(axis=0)).ravel()
@@ -825,7 +690,7 @@ abundance = abundance.sort_values(
     "total_counts", ascending=False
 ).reset_index(drop=True)
 
-logging.info(
+logger.info(
     "Highly Abundant Genes \n%s",
     abundance.head(15).to_string(index=False)
 )
@@ -848,18 +713,18 @@ for container in ax.containers:
         container,
         fmt="%.2f",
         padding=4,
-        fontsize=10,
+        fontsize=14,
         color="#263746"
     )
-ax.set_xlabel("Percentage of Total Counts (%)", fontsize=12, labelpad=10)
-ax.set_ylabel("Gene", fontsize=12, labelpad=10)
-ax.tick_params(axis="x", labelsize=9)
-ax.tick_params(axis="y", labelsize=9)
+ax.set_xlabel("Percentage of Total Counts (%)", fontsize=14, labelpad=10)
+ax.set_ylabel("Gene", fontsize=14, labelpad=10)
+ax.tick_params(axis="x", labelsize=14)
+ax.tick_params(axis="y", labelsize=14)
 ax.grid(axis="x", linestyle="--", alpha=0.7)
 ax.grid(axis="y", visible=False)
 plt.title("Top 20 Most Abundant Genes")
 plt.tight_layout()
-savefig(RESOURCE_FOLDER / "most_abundant_genes.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "most_abundant_genes.jpg")
 
 sample_ids = adata.obs["sample"].astype(str).to_numpy()
 unique_samples = pd.unique(sample_ids)
@@ -910,18 +775,20 @@ ax.legend(
     bbox_to_anchor=(1.02, 0.5),
     borderaxespad=0
 )
-ax.set_xlabel("Samples", fontsize=12, labelpad=10)
-ax.set_ylabel("Percent of Gene by Sample Counts", fontsize=12, labelpad=10)
-ax.tick_params(axis="x", labelsize=9)
-ax.tick_params(axis="y", labelsize=9)
+ax.set_xlabel("Samples", fontsize=14, labelpad=10)
+ax.set_ylabel("Percent of Gene by Sample Counts", fontsize=14, labelpad=10)
+ax.tick_params(axis="x", labelsize=14)
+ax.tick_params(axis="y", labelsize=14)
 ax.grid(axis="y", linestyle="--", alpha=0.7)
 ax.grid(axis="x", visible=False)
 plt.xticks(rotation=90)
-savefig(RESOURCE_FOLDER / "most_abundant_genes_by_sample.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "most_abundant_genes_by_sample.jpg")
 
-#---------- PCA FOR SAMPLING ---------------
+# -----------------------------------------------------------------------------
+# 10.  PCA FOR SAMPLING
+# -----------------------------------------------------------------------------
 
-logging.info("[7] PCA for random sampling")
+logger.info("[10] PCA for random sampling")
 
 sc.tl.pca(
     adata,
@@ -929,16 +796,18 @@ sc.tl.pca(
     svd_solver="arpack"
 )
 
-#---------- RANDOM SAMPLING ---------------
+# -----------------------------------------------------------------------------
+# 11.  RANDOM SAMPLING - Kennard-Stone Algorithm
+# -----------------------------------------------------------------------------
 
-logging.info("[8] Random sampling") 
+logger.info("[11] Random sampling") 
 
 selected = []
 
 sample_counts = adata.obs["sample"].value_counts()
 n_per_sample = int(sample_counts.min() * SAMPLING_PCT)
 
-logging.info(f"Selecting {n_per_sample:,} barcodes per sample")
+logger.info(f"Selecting {n_per_sample:,} barcodes per sample")
 
 for sample, group in adata.obs.groupby("sample", observed=True):
 
@@ -956,21 +825,27 @@ for sample, group in adata.obs.groupby("sample", observed=True):
 
 adata_balanced = adata[selected].copy()
 
-logging.info(
+logger.info(
     "Check balanced data\n%s",
     adata_balanced.obs["sample"].value_counts().sort_index().to_string()
 )
 
-#---------- DATA SCALING ---------------
+# -----------------------------------------------------------------------------
+# 11. DATA SCALING
+# -----------------------------------------------------------------------------
+
+logger.info("[11] Data scaling")
 
 # scale the data 
 # - ensures that the expression levles of genes across cells to have a mean 0 and a variance of 1
 # - high abundance genes do not dominate the signal simply due to their larger numerical values
 sc.pp.scale(adata_balanced)
 
-#---------- DIMENSIONALITY REDUCTION PRE BATCH CORRECTION ---------------
+# -----------------------------------------------------------------------------
+# 12.  DIMENSIONALITY REDUCTION PRE BATCH CORRECTION
+# -----------------------------------------------------------------------------
 
-logging.info("[9] PCA")
+logger.info("[12] Dimensionality reduction pre batch correction (UMAP)")
 
 # UMAP
 sc.pp.neighbors(adata_balanced, n_neighbors=15, n_pcs=30)
@@ -982,19 +857,35 @@ sc.pl.umap(
     size=2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "umap_by_sample_pre_batch_correction.jpeg")
+plot.savefig(fig, PREPROCESSING_DIR / "umap_by_sample_pre_batch_correction.jpeg")
 sc.pl.umap(
     adata_balanced,
     color="region",
-    palette=COLOR_PALETTE_2,
+    palette=["#440154", "#FDE725"],
     size=2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "umap_by_region_pre_batch_correction.jpeg")
+fig = plt.gcf()
+ax = fig.axes[0]
+if ax.get_legend() is not None:
+    ax.get_legend().set_title("Region")
+    ax.get_legend().get_title().set_fontweight("bold")
+    ax.get_legend().get_title().set_fontsize(12)
+    for text in ax.get_legend().get_texts():
+        text.set_fontsize(12)
+ax.set_xlabel("UMAP 1", fontsize=14, labelpad=10)
+ax.set_ylabel("UMAP 2", fontsize=14, labelpad=10)
+ax.tick_params(axis="both", labelsize=14)
+ax.set_title("")
+ax.grid(False)
+plt.tight_layout()
+plot.savefig(fig, PREPROCESSING_DIR / "umap_by_region_pre_batch_correction.jpeg")
 
-#---------- BATCH CORRECTION ---------------
+# -----------------------------------------------------------------------------
+# 13. BATCH CORRECTION (HarmonyPy)
+# -----------------------------------------------------------------------------
 
-logging.info("[10] Batch correction")
+logger.info("[13] Batch correction")
 
 ho = hm.run_harmony(
     adata_balanced.obsm["X_pca"],
@@ -1007,9 +898,11 @@ adata_balanced.obsm["X_pca_harmony"] = ho.Z_corr
 # get pca embeddings after batch correction
 pca_embs = adata_balanced.obsm["X_pca_harmony"]
 
-# ----------- METADATA/SAMPLE COMPOSITION ---------- #
+# -----------------------------------------------------------------------------
+# 14. METADATA/SAMPLE COMPOSITION
+# -----------------------------------------------------------------------------
 
-logging.info("[11] Generating metadata QC plots")
+logger.info("[14] Generating metadata QC plots")
 
 for column in QC_GROUPS:
 
@@ -1027,75 +920,22 @@ for column in QC_GROUPS:
     ax.set_ylabel("Number of barcodes")
     ax.tick_params(axis="x", rotation=45)
     fig.tight_layout()
-    savefig(
-        RESOURCE_FOLDER / f"{column}_barcode_counts.jpg"
-    )
+    plot.savefig(fig, PREPROCESSING_DIR / f"{column}_barcode_counts.jpg")
 
-# ----------- QC METRICS BY GROUP ---------- #
 
-logging.info("[12] Generating grouped QC plots")
+# -----------------------------------------------------------------------------
+# 15. QC METRICS BY GROUP
+# -----------------------------------------------------------------------------
 
-COUNT_METRICS = ["total_counts", "n_genes_by_counts"]
+logger.info("[15] Generating grouped QC plots")
 
-for group in QC_GROUPS:
+plot.plot_qc_violinplots(adata, PREPROCESSING_DIR, "_post_batch_correction")
 
-    n_metrics = len(QC_OBS_METRICS)
-    fig, axes = plt.subplots(
-        1,
-        n_metrics,
-        figsize=(5 * n_metrics, 4),
-        squeeze=False,
-    )
-    axes = axes.ravel()
-    fig.set_dpi(300)
+# -----------------------------------------------------------------------------
+# 16. QC RELATIONSHIPS
+# -----------------------------------------------------------------------------
 
-    for ax, metric in zip(axes, QC_OBS_METRICS):
-
-        plot_data = adata.obs[[group, metric]].dropna().copy()
-
-        if metric in COUNT_METRICS:
-            upper = plot_data[metric].quantile(0.99)
-            plot_data = plot_data[plot_data[metric] <= upper]
-
-        sns.violinplot(
-            data=plot_data,
-            x=group,
-            y=metric,
-            palette=COLOR_PALETTE,
-            linewidth=1, 
-            linecolor="k",
-            inner = None,
-            ax=ax
-        )
-
-        if metric in COUNT_METRICS:
-            ax.set_yscale("log")
-            ax.set_ylim(bottom=1)
-
-        ax.set_xlabel("")
-        ax.set_ylabel(
-            QC_METRICS_NAMES.get(metric, "Value"),
-            fontsize=12,
-            labelpad=10
-        )
-        ax.tick_params(axis="x", bottom=True, labelsize=9)
-        ax.tick_params(axis="y", labelsize=9)
-        ax.grid(axis="y", alpha=0.7)
-        ax.grid(axis="x", visible=False)
-
-    fig.suptitle(
-        f"QC Metrics by {group.replace('_', ' ').title()}",
-        fontsize=14,
-        fontweight="bold",
-        color=MAIN_COLOR,
-        y=1.03,
-    )
-    fig.tight_layout()
-    savefig(RESOURCE_FOLDER / f"qc_violin_{group}.jpg")
-
-# ----------- QC RELATIONSHIPS ---------- #
-
-logging.info("[13] Generating QC relationship plots")
+logger.info("[16] Generating QC relationship plots")
 
 scatter_configs = [
     {
@@ -1139,18 +979,18 @@ for config in scatter_configs:
 
     ax.set_xlabel(
         QC_METRICS_NAMES.get(config["x"], config["x"]),
-        fontsize=12,
+        fontsize=14,
         labelpad=10,
     )
 
     ax.set_ylabel(
         QC_METRICS_NAMES.get(config["y"], config["y"]),
-        fontsize=12,
+        fontsize=14,
         labelpad=10,
     )
 
-    ax.tick_params(axis="x", labelsize=9)
-    ax.tick_params(axis="y", labelsize=9)
+    ax.tick_params(axis="x", labelsize=14)
+    ax.tick_params(axis="y", labelsize=14)
 
     ax.grid(axis="y", alpha=0.7)
     ax.grid(axis="x", alpha=0.7)
@@ -1168,32 +1008,35 @@ for config in scatter_configs:
     )
     cbar.set_label(
         QC_METRICS_NAMES.get(config["color"], config["color"]),
-        fontsize=10,
+        fontsize=14,
         labelpad=8,
     )
-    cbar.ax.tick_params(labelsize=8)
+    cbar.ax.tick_params(labelsize=14)
 
     fig.tight_layout()
-    savefig(RESOURCE_FOLDER / config["filename"])
+    plot.savefig(fig, PREPROCESSING_DIR / config["filename"])
 
-#---------- DIMENSIONALITY REDUCTION ---------------
+# -----------------------------------------------------------------------------
+# 17. DIMENSIONALITY REDUCTION
+# -----------------------------------------------------------------------------
 
-logging.info("[14] Dimensionality reduction")
+logger.info("[17] Dimensionality reduction")
+
+logger.info("[17A] PCA")
 
 sc.pp.neighbors(adata_balanced, n_neighbors=15, n_pcs=30, use_rep="X_pca_harmony")
-
 sc.tl.pca(adata_balanced)
 
 sc.pl.pca_variance_ratio(
     adata_balanced, show=False
 )
-savefig(RESOURCE_FOLDER / "pca_variance_ratio_post_batch_correction.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "pca_variance_ratio_post_batch_correction.jpg")
 
 sc.pl.pca_loadings(
     adata_balanced, components='1,2,3', 
     show=False
 )
-savefig(RESOURCE_FOLDER / "pca_loadings_ratio_post_batch_correction.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "pca_loadings_ratio_post_batch_correction.jpg")
 
 fig_region = sc.pl.pca(
     adata_balanced,
@@ -1205,7 +1048,7 @@ fig_region = sc.pl.pca(
     return_fig=True
 )
 
-pca_axes = style_pca_figure(fig_region, adata_balanced)
+pca_axes = plot.style_pca_figure(fig_region, adata_balanced)
 
 handles, labels = [], []
 
@@ -1222,14 +1065,6 @@ for ax in pca_axes:
 
         legend.remove()
 
-fig_region.subplots_adjust(
-    left=0.06,
-    right=0.86,
-    bottom=0.20,
-    top=0.96,
-    wspace=0.35
-)
-
 if handles:
     fig_region.legend(
         handles,
@@ -1238,11 +1073,11 @@ if handles:
         loc="center left",
         bbox_to_anchor=(0.88, 0.5),
         fontsize=9,
-        title_fontsize=10,
+        title_fontsize=14,
         frameon=False
     )
 
-savefig(RESOURCE_FOLDER / "pca_adata_post_batch_correction.jpg")
+plot.savefig(fig, PREPROCESSING_DIR / "pca_adata_post_batch_correction.jpg")
 
 # pca colored by pct_counts_mt
 fig_mt = sc.pl.pca(
@@ -1256,7 +1091,7 @@ fig_mt = sc.pl.pca(
     return_fig=True
 )
 
-pca_axes = style_pca_figure(fig_mt, adata_balanced)
+pca_axes = plot.style_pca_figure(fig_mt, adata_balanced)
 
 scatter = next(
     collection
@@ -1275,11 +1110,11 @@ cbar = fig_mt.colorbar(
 
 cbar.set_label(
     "Mitochondrial Read Fraction per Barcode",
-    fontsize=10,
+    fontsize=14,
     labelpad=8
 )
-cbar.ax.tick_params(labelsize=8)
-savefig(RESOURCE_FOLDER / "pca_pct_mt_post_batch_correction.jpg")
+cbar.ax.tick_params(labelsize=14)
+plot.savefig(fig, PREPROCESSING_DIR / "pca_pct_mt_post_batch_correction.jpg")
 
 # pca colored by pct_counts_ribo
 fig_mt = sc.pl.pca(
@@ -1293,7 +1128,7 @@ fig_mt = sc.pl.pca(
     return_fig=True
 )
 
-pca_axes = style_pca_figure(fig_mt, adata_balanced)
+pca_axes = plot.style_pca_figure(fig_mt, adata_balanced)
 
 scatter = next(
     collection
@@ -1312,13 +1147,14 @@ cbar = fig_mt.colorbar(
 
 cbar.set_label(
     "Ribosomal Read Fraction per Barcode",
-    fontsize=10,
+    fontsize=14,
     labelpad=8
 )
-cbar.ax.tick_params(labelsize=8)
-savefig(RESOURCE_FOLDER / "pca_pct_ribo_post_batch_correction.jpg")
+cbar.ax.tick_params(labelsize=14)
+plot.savefig(fig, PREPROCESSING_DIR / "pca_pct_ribo_post_batch_correction.jpg")
 
-# UMAP
+logger.info("[17B] UMAP")
+
 sc.tl.umap(adata_balanced)
 sc.pl.umap(
     adata_balanced,
@@ -1327,15 +1163,31 @@ sc.pl.umap(
     size=2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "umap_by_sample_post_batch_correction.jpeg")
+plot.savefig(fig, PREPROCESSING_DIR / "umap_by_sample_post_batch_correction.jpeg")
+
 sc.pl.umap(
     adata_balanced,
     color="region",
-    palette=COLOR_PALETTE_2,
+    palette=["#440154", "#FDE725"],
     size=2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "umap_by_region_post_batch_correction.jpeg")
+fig = plt.gcf()
+ax = fig.axes[0]
+if ax.get_legend() is not None:
+    ax.get_legend().set_title("Region")
+    ax.get_legend().get_title().set_fontweight("bold")
+    ax.get_legend().get_title().set_fontsize(12)
+    for text in ax.get_legend().get_texts():
+        text.set_fontsize(12)
+ax.set_xlabel("UMAP 1", fontsize=14, labelpad=10)
+ax.set_ylabel("UMAP 2", fontsize=14, labelpad=10)
+ax.tick_params(axis="both", labelsize=14)
+ax.set_title("")
+ax.grid(False)
+plt.tight_layout()
+plot.savefig(fig, PREPROCESSING_DIR / "umap_by_region_post_batch_correction.jpeg")
+
 sc.pl.umap(
     adata_balanced,
     color="Ki67",
@@ -1343,9 +1195,11 @@ sc.pl.umap(
     size=2,
     show=False
 )
-savefig(RESOURCE_FOLDER / "umap_by_Ki67_post_batch_correction.jpeg")
+plot.savefig(fig, PREPROCESSING_DIR / "umap_by_Ki67_post_batch_correction.jpeg")
 
-#---------- FEATURE SELECTION & STABILITY ---------------
+# -----------------------------------------------------------------------------
+# 18. FEATURE SELECTION & STABILITY
+# -----------------------------------------------------------------------------
 
 '''
 data_matrix = pd.DataFrame(
@@ -1364,11 +1218,11 @@ ca.plot_feature_overall_stability_incremental([feature_stability_HV, feature_sta
 # ----------------------- SAVE DATA --------------------------
 # ============================================================
 
-logging.info("[15] Saving adata object as .h5 file")
+logger.info("[18] Saving adata object as .h5 file")
 
 adata_balanced.write_h5ad(
-    SC_EXP_SAVE_FNAME,
+    SC_EXP_PREPROCESSED_FNAME,
     compression="gzip",
 )
 
-logging.info("------------ Completed Preprocessing ------------") 
+logger.info("------------ Completed Preprocessing ------------") 

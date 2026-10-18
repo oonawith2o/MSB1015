@@ -1,0 +1,354 @@
+2026-10-04 14:28:32,498 - INFO - ------------ Starting quality control ------------
+2026-10-04 14:28:32,498 - INFO - [1] Loading data and creating AnnData object
+2026-10-04 14:28:32,795 - INFO - Patient information table
+   age     sex tumor_size lymph_nodes cancer_type grade    ER    PR HER2  Ki67 stage treatment  tumor_volume
+3   36  Female  2.2*2*1.8        1/15         IDC   III   0.6  >80%   3+   0.6   IIB        No          7.92
+6   47  Female  3.2*2*2.5        2/20         IDC   III     0     0   3+   0.3   IIB        No         16.00
+7   46  Female    4.5*5*3        5/20         IDC   III  >80%  >80%   3+   0.2  IIIA        No         67.50
+2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.00
+2026-10-04 14:29:11,923 - INFO - Shape of the original dataset: (81683, 36601)
+2026-10-04 14:29:11,924 - INFO - Number of variables (genes): 36601
+2026-10-04 14:29:11,924 - INFO - Number of observations (barcodes): 81683
+2026-10-04 14:29:11,924 - INFO - Type of adata.X: <class 'scipy.sparse._csc.csc_matrix'>
+2026-10-04 14:29:11,924 - INFO - Shape of adata.X: (81683, 36601)
+2026-10-04 14:29:11,924 - INFO - Dtype of adata.X: float32
+2026-10-04 14:29:11,925 - INFO - Type of features: <class 'pandas.core.frame.DataFrame'>
+2026-10-04 14:29:11,925 - INFO - Shape of features: (36601, 1)
+2026-10-04 14:29:11,925 - INFO - Type of barcodes: <class 'pandas.core.frame.DataFrame'>
+2026-10-04 14:29:11,925 - INFO - Shape of barcodes: (81683, 1)
+2026-10-04 14:29:11,925 - INFO - [2] Annotating cell and gene names
+2026-10-04 14:29:12,212 - INFO - Patient data mapping check
+                    patient  age     sex tumor_size lymph_nodes cancer_type grade    ER    PR HER2  Ki67 stage treatment tumor_volume
+barcode                                                                                                                              
+AAACCCAAGACGGTTG-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACCCAAGTCACTAC-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACCCAGTATTGAGA-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACCCATCAGCTAGT-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACCCATCTACCAGA-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACCCATCTGCTTAT-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACGAAAGAGCCATG-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACGAAAGATTAGTG-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACGAAAGCCAGAGT-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+AAACGAACAATTTCTC-L2       2   62  Female  3*2.8*2.5        1/20         IDC   III  >80%  >80%   1+   0.4   IIB        No         21.0
+2026-10-04 14:29:12,246 - INFO - obs_names name: barcode
+2026-10-04 14:29:12,247 - INFO - var_names name: gene_symbol
+2026-10-04 14:29:12,247 - INFO - First barcodes: ['AAACCCAAGACGGTTG-L2', 'AAACCCAAGTCACTAC-L2', 'AAACCCAGTATTGAGA-L2', 'AAACCCATCAGCTAGT-L2', 'AAACCCATCTACCAGA-L2']
+2026-10-04 14:29:12,247 - INFO - First genes: ['MIR1302-2HG', 'FAM138A', 'OR4F5', 'AL627309.1', 'AL627309.3']
+2026-10-04 14:29:12,247 - INFO - obs columns: ['sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume']
+2026-10-04 14:29:12,247 - INFO - var columns: []
+2026-10-04 14:29:12,249 - INFO - Patient counts:
+patient
+7    25732
+3    23001
+2    18543
+6    14407
+Name: count, dtype: int64
+2026-10-04 14:29:12,251 - INFO - Region counts:
+region
+T    45663
+L    36020
+Name: count, dtype: int64
+2026-10-04 14:29:12,253 - INFO - Sample counts:
+sample
+P7_T    14225
+P3_T    14000
+P7_L    11507
+P2_T     9731
+P3_L     9001
+P2_L     8812
+P6_T     7707
+P6_L     6700
+Name: count, dtype: int64
+2026-10-04 14:29:12,254 - INFO - AnnData object:
+AnnData object with n_obs × n_vars = 81683 × 36601
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume'
+    layers: None (.X)
+2026-10-04 14:29:12,254 - INFO - [3] Quality control metrics computation
+2026-10-04 14:29:16,284 - INFO - QC metrics:
+AnnData object with n_obs × n_vars = 81683 × 36601
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb'
+    var: 'mt', 'ribo', 'hb', 'n_cells_by_counts', 'mean_counts', 'log1p_mean_counts', 'pct_dropout_by_counts', 'total_counts', 'log1p_total_counts'
+    layers: None (.X)
+2026-10-04 14:29:16,304 - INFO - Overall QC statistics
+        total_counts  n_genes_by_counts  pct_counts_mt  pct_counts_ribo
+count   81683.000000       81683.000000   81683.000000     81683.000000
+mean     4115.219727        1288.778914      15.178395        15.715003
+std      6422.138672        1095.151201      16.671612         9.703552
+min       254.000000          45.000000       0.000000         0.280656
+1%        445.000000         121.000000       0.985091         1.630435
+50%      2359.000000        1004.000000       9.424650        14.333113
+99%     32243.760000        5827.540000      89.095668        43.084236
+max    188343.000000       10970.000000      97.783630        64.994698
+2026-10-04 14:29:16,347 - INFO - Tumor QC statistics
+        total_counts  n_genes_by_counts  pct_counts_mt  pct_counts_ribo
+count   45663.000000       45663.000000   45663.000000     45663.000000
+mean     4440.307129        1388.290607      14.849045        14.593872
+std      7435.358887        1198.363300      15.468418         7.671097
+min       384.000000          72.000000       0.000000         0.386013
+1%        446.620000         240.000000       0.938632         2.054953
+50%      2255.000000        1018.000000       9.664948        14.073523
+99%     36311.800000        6146.760000      79.168901        36.437700
+max    188343.000000       10970.000000      96.821068        64.994698
+2026-10-04 14:29:16,380 - INFO - Lymph QC statistics
+       total_counts  n_genes_by_counts  pct_counts_mt  pct_counts_ribo
+count  36020.000000       36020.000000   36020.000000     36020.000000
+mean    3703.101807        1162.626707      15.595919        17.136274
+std     4810.650879         933.181652      18.073952        11.632644
+min      254.000000          45.000000       0.000000         0.280656
+1%       442.000000          93.000000       1.113373         1.357675
+50%     2495.000000         984.000000       9.156833        14.972108
+99%    26502.530000        5303.050000      92.123563        45.298101
+max    90603.000000        8645.000000      97.783630        64.659431
+2026-10-04 14:29:16,384 - INFO - [4] Generating metadata QC plots
+2026-10-04 14:29:17,348 - INFO - [5] Generating QC metric distribution plots
+2026-10-04 14:29:19,156 - INFO - [6] Generating grouped QC plots
+2026-10-04 14:29:25,495 - INFO - [7] Generating QC relationship plots
+2026-10-04 14:29:27,378 - INFO - [8] Generating grouped QC relationship plots
+2026-10-04 14:29:37,503 - INFO - [9] Generating sample-level QC plots
+2026-10-04 14:29:38,443 - INFO - [10] Generating region-specific QC plots
+2026-10-04 14:29:40,059 - INFO - [11] Generating filtering diagnostics
+2026-10-04 14:29:40,064 - INFO - Gene distribution:
+count    81683.000000
+mean      1288.778914
+std       1095.151201
+min         45.000000
+1%         121.000000
+5%         314.000000
+10%        393.000000
+25%        612.000000
+50%       1004.000000
+75%       1510.000000
+90%       2501.000000
+95%       3530.000000
+99%       5827.540000
+max      10970.000000
+Name: n_genes_by_counts, dtype: float64
+2026-10-04 14:29:40,953 - INFO - Gene detection distribution:
+count    36601.000000
+mean      2876.187208
+std       6838.681936
+min          0.000000
+1%           0.000000
+5%           0.000000
+10%          0.000000
+25%          5.000000
+50%        132.000000
+75%       2731.000000
+90%       8670.000000
+95%      14008.000000
+99%      32759.000000
+max      81322.000000
+Name: n_cells_by_counts, dtype: float64
+2026-10-04 14:29:41,530 - INFO - Mitochondrial percentage distribution:
+count    81683.000000
+mean        15.178395
+std         16.671612
+min          0.000000
+1%           0.985091
+5%           2.361051
+10%          3.195596
+25%          5.214831
+50%          9.424650
+75%         18.253960
+90%         32.790440
+95%         49.820464
+99%         89.095668
+max         97.783630
+Name: pct_counts_mt, dtype: float64
+2026-10-04 14:29:42,257 - INFO - [12] Generating filtering space
+2026-10-04 14:29:44,623 - INFO - [13] Overall QC threshold analysis
+2026-10-04 14:29:44,624 - INFO - Low genes (< 200): 1652
+2026-10-04 14:29:44,624 - INFO - High mitochondrial (>= 20%): 18014
+2026-10-04 14:29:44,625 - INFO - Failing both criteria: 1544
+2026-10-04 14:29:44,625 - INFO - Failing either criterion: 18122
+2026-10-04 14:29:44,625 - INFO - Retained: 63561 cells (77.81%)
+2026-10-04 14:29:44,625 - INFO - Removed: 18122 cells (22.19%)
+2026-10-04 14:29:44,633 - INFO - QC failure modes:
+qc_failure
+pass                     63561
+high_mt                  16470
+low_genes_and_high_mt     1544
+low_genes                  108
+2026-10-04 14:29:44,633 - INFO - [14] QC failure rates by sample
+2026-10-04 14:29:44,657 - INFO - QC summary by sample:
+                       total_cells  failed_cells  low_gene_cells  high_mt_cells  failure_rate  retention_rate
+patient region sample                                                                                        
+2       L      P2_L           8812          1338             128           1324      0.151838        0.848162
+        T      P2_T           9731          2833              11           2832      0.291131        0.708869
+3       L      P3_L           9001          1410              80           1406      0.156649        0.843351
+        T      P3_T          14000          5577              93           5576      0.398357        0.601643
+6       L      P6_L           6700          3848            1122           3845      0.574328        0.425672
+        T      P6_T           7707           981             114            951      0.127287        0.872713
+7       L      P7_L          11507          1062              74           1008      0.092292        0.907708
+        T      P7_T          14225          1073              30           1072      0.075431        0.924569
+2026-10-04 14:29:44,659 - INFO - Samples sorted by QC failure rate:
+                       total_cells  failed_cells  low_gene_cells  high_mt_cells  failure_rate  retention_rate
+patient region sample                                                                                        
+6       L      P6_L           6700          3848            1122           3845      0.574328        0.425672
+3       T      P3_T          14000          5577              93           5576      0.398357        0.601643
+2       T      P2_T           9731          2833              11           2832      0.291131        0.708869
+3       L      P3_L           9001          1410              80           1406      0.156649        0.843351
+2       L      P2_L           8812          1338             128           1324      0.151838        0.848162
+6       T      P6_T           7707           981             114            951      0.127287        0.872713
+7       L      P7_L          11507          1062              74           1008      0.092292        0.907708
+        T      P7_T          14225          1073              30           1072      0.075431        0.924569
+2026-10-04 14:29:44,674 - INFO - QC summary by patient:
+         total_cells  failed_cells  low_gene_cells  high_mt_cells  failure_rate  retention_rate
+patient                                                                                        
+2              18543          4171             139           4156      0.224937        0.775063
+3              23001          6987             173           6982      0.303769        0.696231
+6              14407          4829            1236           4796      0.335184        0.664816
+7              25732          2135             104           2080      0.082971        0.917029
+2026-10-04 14:29:44,684 - INFO - QC summary by region:
+        total_cells  failed_cells  low_gene_cells  high_mt_cells  failure_rate  retention_rate
+region                                                                                        
+L             36020          7658            1404           7583      0.212604        0.787396
+T             45663         10464             248          10431      0.229157        0.770843
+2026-10-04 14:29:44,684 - INFO - [15] Cells with highest mitochondrial percentage
+2026-10-04 14:29:44,709 - INFO - Top 10 cells by mitochondrial percentage:
+                    patient region sample  n_genes_by_counts  total_counts  pct_counts_mt
+barcode                                                                                  
+AGGTGTTTCTGTCTCG-L3       3      L   P3_L                100        4557.0      97.783630
+GAGACCCTCTCAACCC-L6       6      L   P6_L                105        4632.0      97.733154
+AGGACGAAGCGTTCCG-L6       6      L   P6_L                 97        3643.0      97.474609
+GCGTTTCTCTCGCTCA-L6       6      L   P6_L                120        4537.0      97.421204
+GTAATCGCAGACCAAG-L6       6      L   P6_L                 92        2981.0      97.115067
+ATTCAGGTCTTCGCTG-L6       6      L   P6_L                 79        2375.0      97.094742
+TGTGATGGTACAGGTG-L6       6      L   P6_L                159        5685.0      97.009674
+GCATCGGCAAGTGGCA-L6       6      L   P6_L                 84        2526.0      96.951706
+CTTTCAACAGGTTCAT-L6       6      L   P6_L                127        3955.0      96.940582
+GACCGTGTCCACACCT-L6       6      L   P6_L                 92        2630.0      96.882126
+2026-10-04 14:29:44,710 - INFO - [16] Investigating high-mitochondrial cells by sample
+2026-10-04 14:29:44,722 - INFO - High-mitochondrial cells by sample:
+                       total_cells  high_mt_cells  high_mt_rate
+patient region sample                                          
+6       L      P6_L           6700           3845      0.573881
+3       T      P3_T          14000           5576      0.398286
+2       T      P2_T           9731           2832      0.291029
+3       L      P3_L           9001           1406      0.156205
+2       L      P2_L           8812           1324      0.150250
+6       T      P6_T           7707            951      0.123394
+7       L      P7_L          11507           1008      0.087599
+        T      P7_T          14225           1072      0.075360
+2026-10-04 14:29:44,722 - INFO - [17] Mitochondrial threshold sensitivity analysis
+2026-10-04 14:29:44,729 - INFO - MT threshold sensitivity:
+ mt_cutoff  retained_cells  removed_cells  retention_rate  removal_rate
+        15           55566          26117        0.680264      0.319736
+        20           63561          18122        0.778142      0.221858
+        25           68733          12950        0.841460      0.158540
+        30           72086           9597        0.882509      0.117491
+2026-10-04 14:29:44,779 - INFO - Sample-level MT threshold sensitivity:
+patient region sample  retained  total  retention_rate  mt_cutoff
+      2      L   P2_L      6789   8812        0.770427         15
+      2      T   P2_T      5972   9731        0.613709         15
+      3      L   P3_L      6730   9001        0.747695         15
+      3      T   P3_T      5691  14000        0.406500         15
+      6      L   P6_L      2086   6700        0.311343         15
+      6      T   P6_T      6131   7707        0.795511         15
+      7      L   P7_L      9588  11507        0.833232         15
+      7      T   P7_T     12579  14225        0.884288         15
+      2      L   P2_L      7474   8812        0.848162         20
+      2      T   P2_T      6898   9731        0.708869         20
+      3      L   P3_L      7591   9001        0.843351         20
+      3      T   P3_T      8423  14000        0.601643         20
+      6      L   P6_L      2852   6700        0.425672         20
+      6      T   P6_T      6726   7707        0.872713         20
+      7      L   P7_L     10445  11507        0.907708         20
+      7      T   P7_T     13152  14225        0.924569         20
+      2      L   P2_L      7894   8812        0.895824         25
+      2      T   P2_T      7504   9731        0.771144         25
+      3      L   P3_L      8157   9001        0.906233         25
+      3      T   P3_T     10326  14000        0.737571         25
+      6      L   P6_L      3458   6700        0.516119         25
+      6      T   P6_T      7034   7707        0.912677         25
+      7      L   P7_L     10904  11507        0.947597         25
+      7      T   P7_T     13456  14225        0.945940         25
+      2      L   P2_L      8159   8812        0.925897         30
+      2      T   P2_T      7920   9731        0.813894         30
+      3      L   P3_L      8468   9001        0.940784         30
+      3      T   P3_T     11563  14000        0.825929         30
+      6      L   P6_L      3995   6700        0.596269         30
+      6      T   P6_T      7206   7707        0.934994         30
+      7      L   P7_L     11126  11507        0.966890         30
+      7      T   P7_T     13649  14225        0.959508         30
+2026-10-04 14:29:44,779 - INFO - [18] Generating mitochondrial distributions for selected samples
+2026-10-04 14:29:46,217 - INFO - [19] Investigating QC metrics across mitochondrial bins
+2026-10-04 14:29:46,268 - INFO - QC metrics by mitochondrial bin:
+               cells  median_genes  median_counts  median_mt  median_ribo
+pct_counts_mt                                                            
+(-0.001, 5.0]  19109        1301.0         3514.0   3.443984    20.224499
+(5.0, 10.0]    23723        1236.0         3206.0   7.093185    16.972826
+(10.0, 15.0]   12840         965.0         2180.5  12.177608    12.886267
+(15.0, 20.0]    8006         820.0         1769.5  17.272881    11.712883
+(20.0, 25.0]    5183         729.0         1569.0  22.258415    10.779015
+(25.0, 30.0]    3341         661.0         1453.0  27.142859     9.725316
+(30.0, 40.0]    3667         600.0         1389.0  34.093266     8.731809
+(40.0, 50.0]    1751         518.0         1315.0  44.304489     7.116105
+(50.0, 75.0]    2127         375.0         1257.0  60.302673     6.095552
+(75.0, 100.0]   1936         141.0         1158.5  87.691864     2.394089
+2026-10-04 14:29:46,699 - INFO - Mitochondrial bins by sample (%):
+pct_counts_mt  (-0.001, 5.0]  (5.0, 10.0]  (10.0, 15.0]  (15.0, 20.0]  (20.0, 25.0]  (25.0, 30.0]  (30.0, 40.0]  (40.0, 50.0]  (50.0, 75.0]  (75.0, 100.0]
+sample                                                                                                                                                    
+P2_L               27.768951    34.509759     14.922833      7.773491      4.800272      2.973218      3.415797      1.702224      1.758965       0.374489
+P2_T               18.435926    26.903710     16.041517      9.546809      6.196691      4.274997      5.939780      3.483712      5.939780       3.237077
+P3_L               12.165315    41.595378     21.053216      9.576714      6.343740      3.432952      3.521831      1.177647      0.755472       0.377736
+P3_T                3.442857    16.264286     20.950000     19.535714     13.628571      8.792857      8.542857      3.800000      3.714286       1.328571
+P6_L                2.253731    15.865672     13.029851     11.462687      9.074627      8.014925      9.955224      5.701493      6.582090      18.059701
+P6_T               33.579862    32.087712     14.272739      7.733230      3.983392      2.231737      2.608019      0.921240      1.115869       1.466200
+P7_L               29.529851    39.184844     15.077779      7.456331      3.988876      1.920570      1.903189      0.425828      0.443208       0.069523
+P7_T               50.291740    28.105448     10.038664      4.028120      2.137083      1.356766      1.321617      0.857645      1.602812       0.260105
+2026-10-04 14:29:46,699 - INFO - [20] Detailed QC statistics for selected samples
+2026-10-04 14:29:46,725 - INFO - QC statistics: P6_T 
+       n_genes_by_counts   total_counts  pct_counts_mt
+count        7707.000000    7707.000000    7707.000000
+mean         1430.870248    4318.186035      11.200107
+std          1218.523813    7262.388672      13.275929
+min            88.000000     394.000000       0.000000
+1%            163.360000     442.000000       0.750541
+5%            336.300000     547.000000       1.959128
+10%           401.600000     696.000000       2.678760
+25%           637.000000    1229.000000       4.203845
+50%          1165.000000    2534.000000       6.982305
+75%          1651.000000    4011.000000      12.901965
+90%          2787.800000    8648.400000      22.608354
+95%          4006.100000   15450.700000      33.500671
+99%          6445.800000   37167.740000      82.731726
+max         10356.000000  137173.000000      96.821068
+2026-10-04 14:29:46,748 - INFO - QC statistics: P6_L 
+       n_genes_by_counts  total_counts  pct_counts_mt
+count        6700.000000   6700.000000    6700.000000
+mean         1290.350299   4827.354980      35.144207
+std          1420.068654   7337.771484      29.043970
+min            57.000000    894.000000       1.302102
+1%             77.000000    939.000000       4.112696
+5%             92.000000    971.000000       6.048548
+10%           115.000000   1013.900000       7.581591
+25%           414.000000   1208.000000      12.512948
+50%           746.000000   1967.000000      24.017976
+75%          1650.250000   4652.250000      49.310745
+90%          3349.200000  12454.100000      89.751197
+95%          4537.400000  20142.650000      92.230749
+99%          6291.120000  36482.680000      94.545456
+max          8521.000000  77377.000000      97.733154
+2026-10-04 14:29:46,749 - INFO - [21] Generating mitochondrial QC groups
+2026-10-04 14:29:46,825 - INFO - QC metrics by mitochondrial group:
+             n_genes_by_counts                                                                  total_counts                                                                    pct_counts_mt                                                                             
+                         count         mean          std    min    25%     50%     75%      max        count         mean          std    min     25%     50%     75%       max         count       mean        std        min        25%        50%        75%        max
+mt_qc_group                                                                                                                                                                                                                                                               
+low                    63669.0  1449.103237  1142.245255   88.0  750.0  1151.0  1658.0  10970.0      63669.0  4655.183105  6939.927734  254.0  1506.0  2787.0  4860.0  188343.0       63669.0   8.336443   4.824022   0.000000   4.481793   7.256461  11.636590  19.997334
+intermediate            8533.0   893.949256   720.547157  161.0  534.0   700.0   995.0   9049.0       8533.0  2468.390381  4245.996582  341.0  1083.0  1521.0  2370.0   89086.0        8533.0  24.268559   2.803391  20.000000  21.824686  23.936171  26.485327  29.996449
+high                    9481.0   567.482860   520.416352   45.0  270.0   455.0   678.0   7371.0       9481.0  1971.293335  2586.103271  343.0  1035.0  1282.0  1964.0   63853.0        9481.0  52.943813  20.404268  30.000002  35.590424  45.490879  68.857353  97.783630
+2026-10-04 14:29:46,844 - INFO - Mitochondrial QC groups by sample (%):
+pct_counts_mt        low  intermediate       high
+sample                                           
+P2_L           84.975034      7.773491   7.251475
+P2_T           70.897133     10.502518  18.600349
+P3_L           84.379513      9.787801   5.832685
+P3_T           60.171429     22.442857  17.385714
+P6_L           42.611940     17.089552  40.298507
+P6_T           87.660568      6.228104   6.111327
+P7_L           91.240115      5.918137   2.841749
+P7_T           92.463972      3.493849   4.042179
+2026-10-04 14:29:46,844 - INFO - [21] Investigate Confounders using PCA
+2026-10-04 14:30:46,592 - INFO - [22] Saving adata object as .h5 file
+2026-10-04 14:31:11,277 - INFO - ------------ Completed quality control ------------

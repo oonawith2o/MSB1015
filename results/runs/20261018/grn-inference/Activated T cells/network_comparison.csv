@@ -1,0 +1,12 @@
+Network metric,Regulon Tumor GRN Network,Regulon Lymph Node GRN Network,Change (%)
+Number of nodes,2559.0,2786.0,8.87
+Number of edges,5253.0,6240.0,18.79
+Average number of neighbors,4.066,4.439,9.17
+Network diameter,14.0,13.0,-7.14
+Network radius,1.0,1.0,0.0
+Characteristic path length,4.513,4.317,-4.34
+Clustering coefficient,0.019,0.055,189.47
+Network density,0.001,0.001,0.0
+Connected components,1.0,1.0,0.0
+Multi-edge node pairs,8.0,14.0,75.0
+Number of self-loops,43.0,42.0,-2.33

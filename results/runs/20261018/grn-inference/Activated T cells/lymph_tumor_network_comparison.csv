@@ -1,0 +1,12 @@
+Network Metric,Lymph,Tumor,Difference (Tumor - Lymph)
+Number of nodes,773.0,3974.0,3201.0
+Number of edges,2011.0,7460.0,5449.0
+Average number of neighbors,5.144,3.717,-1.427
+Network diameter,6.0,12.0,6.0
+Network radius,1.0,1.0,0.0
+Characteristic path length,2.267,4.231,1.964
+Clustering coefficient,0.066,0.016,-0.05
+Network density,0.003,0.0,-0.003
+Connected components,1.0,1.0,0.0
+Multi-edge node pairs,5.0,11.0,6.0
+Number of self-loops,18.0,64.0,46.0
