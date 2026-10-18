@@ -1480,7 +1480,7 @@ plot.savefig(fig, QC_DIR / "pca_pct_ribo.jpg")
 logger.info("[20] Saving adata object as .h5 file")
 
 adata.write_h5ad(
-    SC_EXP_SAVE_FNAME,
+    SC_EXP_RAW_FNAME,
     compression="gzip",
 )
 

@@ -1,0 +1,319 @@
+2026-10-18 19:27:25,749 - INFO - ----------- Starting 02_preprocessing ------------
+2026-10-18 19:27:25,749 - INFO - [1] Loading adata object
+2026-10-18 19:27:29,735 - INFO - AnnData object:
+AnnData object with n_obs × n_vars = 81683 × 36601
+    obs: 'sample', 'patient', 'region', 'age', 'sex', 'tumor_size', 'lymph_nodes', 'cancer_type', 'grade', 'ER', 'PR', 'HER2', 'Ki67', 'stage', 'treatment', 'tumor_volume', 'n_genes_by_counts', 'log1p_n_genes_by_counts', 'total_counts', 'log1p_total_counts', 'pct_counts_in_top_20_genes', 'total_counts_mt', 'log1p_total_counts_mt', 'pct_counts_mt', 'total_counts_ribo', 'log1p_total_counts_ribo', 'pct_counts_ribo', 'total_counts_hb', 'log1p_total_counts_hb', 'pct_counts_hb'
+    var: 'mt', 'ribo', 'hb', 'n_cells_by_counts', 'mean_counts', 'log1p_mean_counts', 'pct_dropout_by_counts', 'total_counts', 'log1p_total_counts'
+    layers: None (.X)
+2026-10-18 19:27:29,735 - INFO - Initial dimensions: 81683 cells x 36601 genes
+2026-10-18 19:27:30,646 - INFO - [2] Filtering Cells and Genes
+2026-10-18 19:27:32,592 - INFO - Genes: 36601 --> 27792 (removed: 8809, 24.068%)
+2026-10-18 19:27:38,270 - INFO - Cells: 81683 --> 77447 (removed: 4236, 5.186%)
+2026-10-18 19:27:38,270 - INFO - [3] Filtering cells with mitochondrial percentage
+2026-10-18 19:27:41,534 - INFO - Cells after mitochondrial filtering: 77447 --> 70741 (removed: 6706, 8.659%)
+2026-10-18 19:27:41,534 - INFO - [4] Recomputing QC metrics
+2026-10-18 19:27:44,199 - INFO - [5] Generating QC metric distribution plots after filtering
+2026-10-18 19:27:48,264 - INFO - [6] Doublet detection and filtering
+2026-10-18 19:38:29,228 - INFO - Scrublet score distribution:
+count    70741.000000
+mean         0.059907
+std          0.048587
+min          0.003434
+50%          0.048017
+90%          0.109135
+95%          0.145000
+99%          0.264516
+99.9%        0.415385
+max          0.634615
+2026-10-18 19:38:29,912 - INFO - Predicted doublets: 5 / 70741 (0.007%)
+2026-10-18 19:38:29,917 - INFO - Doublet summary by sample:
+        n_doublets  n_cells  doublet_pct
+sample                                  
+P2_L             0     7864     0.000000
+P2_T             1     7677     0.013026
+P3_L             0     8301     0.000000
+P3_T             0    11490     0.000000
+P6_L             4     3887     0.102907
+P6_T             0     7045     0.000000
+P7_L             0    11077     0.000000
+P7_T             0    13400     0.000000
+2026-10-18 19:38:32,107 - INFO - Cells after doublet filtering: 70741 --> 70736 (removed: 5, 0.007%)
+2026-10-18 19:38:32,107 - INFO - [7] Normalization and log transformation
+2026-10-18 19:38:36,684 - INFO - [8] Highly variable genes
+2026-10-18 19:38:44,271 - INFO - ========== HVG by pooled ==========
+2026-10-18 19:38:44,287 - INFO - Overview of HVG 
+              means      variances  variances_norm
+count  27792.000000   27792.000000    27792.000000
+mean       0.143488      11.050679        1.136958
+std        2.067202     833.392982        1.648163
+min        0.000000       0.000000        0.000000
+25%        0.000679       0.000749        0.842640
+50%        0.009048       0.011682        0.918442
+75%        0.066179       0.092246        0.992987
+max      300.381800  120451.240627       72.298527
+2026-10-18 19:38:44,301 - INFO - Overview of Top-Ranked HVGs 
+             highly_variable  highly_variable_rank      means     variances
+gene_symbol                                                                
+IGKC                    True                   0.0  10.738295  63354.277957
+IGHG4                   True                   1.0   1.258129   1009.749909
+MUCL1                   True                   2.0   1.760871   1030.626905
+IGHG1                   True                   3.0   1.107357    671.544112
+IGHA1                   True                   4.0   1.354586   2023.633283
+SCGB2A2                 True                   5.0   1.166916   1046.961338
+PIP                     True                   6.0   0.899570    396.689991
+JCHAIN                  True                   7.0   0.488535    181.108259
+CCL19                   True                   8.0   0.819201    259.856291
+IGLC2                   True                   9.0   3.673716  23870.116737
+SCGB3A1                 True                  10.0   1.105830    426.298039
+CCL21                   True                  11.0   0.355378     52.988146
+IGHG3                   True                  12.0   0.540277    410.811808
+LYZ                     True                  13.0   0.275843     28.341242
+CCL3                    True                  14.0   0.318522     30.945676
+CFD                     True                  15.0   0.247102     26.264253
+IGLC1                   True                  16.0   1.663509   6038.590385
+IGLC3                   True                  17.0   1.632790   7699.834491
+KRT17                   True                  18.0   0.580016     73.097351
+TFF1                    True                  19.0   1.178311    313.518060
+2026-10-18 19:38:44,301 - INFO - Genes w/ largest Variance 
+                  means      variances  highly_variable
+gene_symbol                                            
+MALAT1       300.381800  120451.240627            False
+IGKC          10.738295   63354.277957             True
+IGLC2          3.673716   23870.116737             True
+IGLC3          1.632790    7699.834491             True
+IGLC1          1.663509    6038.590385             True
+MT-ATP6       57.843955    4755.904709            False
+MT-CO1        42.858361    4013.973053            False
+MT-CO3        41.990599    3889.937213            False
+MT-CO2        43.606268    3824.413532            False
+MGP            7.905974    2118.679658             True
+2026-10-18 19:38:53,972 - INFO - ========== HVG by region ==========
+2026-10-18 19:38:53,993 - INFO - Overview of HVG 
+              means      variances  variances_norm
+count  27792.000000   27792.000000    27792.000000
+mean       0.143488      11.050679        1.082342
+std        2.067202     833.392982        1.117916
+min        0.000000       0.000000        0.000000
+25%        0.000679       0.000749        0.847955
+50%        0.009048       0.011682        0.924005
+75%        0.066179       0.092246        0.995412
+max      300.381800  120451.240627       48.194054
+2026-10-18 19:38:54,004 - INFO - Overview of Top-Ranked HVGs 
+             highly_variable  highly_variable_rank      means     variances  highly_variable_nbatches
+gene_symbol                                                                                          
+IGKC                    True                   0.0  10.738295  63354.277957                         2
+IGHG4                   True                   1.5   1.258129   1009.749909                         2
+IGHG1                   True                   3.5   1.107357    671.544112                         2
+CCL19                   True                   4.0   0.819201    259.856291                         2
+JCHAIN                  True                   6.5   0.488535    181.108259                         2
+PIP                     True                   7.0   0.899570    396.689991                         1
+IGHA1                   True                   8.0   1.354586   2023.633283                         2
+LYZ                     True                   9.0   0.275843     28.341242                         2
+IGLC2                   True                  12.5   3.673716  23870.116737                         2
+SCGB1D2                 True                  14.0   0.367663    286.858460                         1
+COL1A1                  True                  14.5   1.560563    358.798226                         2
+G0S2                    True                  15.0   0.316826     17.327753                         2
+IGHG3                   True                  16.0   0.540277    410.811808                         2
+CCL3                    True                  17.0   0.318522     30.945676                         2
+CCL21                   True                  18.0   0.355378     52.988146                         2
+CXCL8                   True                  19.0   0.550243     51.969710                         2
+CCL4L2                  True                  21.5   0.234746     16.658020                         2
+IGLC1                   True                  25.0   1.663509   6038.590385                         2
+IGLC3                   True                  26.0   1.632790   7699.834491                         2
+COL3A1                  True                  28.0   0.989015    129.930649                         2
+2026-10-18 19:38:54,010 - INFO - Genes w/ largest Variance 
+                  means      variances  highly_variable
+gene_symbol                                            
+MALAT1       300.381800  120451.240627            False
+IGKC          10.738295   63354.277957             True
+IGLC2          3.673716   23870.116737             True
+IGLC3          1.632790    7699.834491             True
+IGLC1          1.663509    6038.590385             True
+MT-ATP6       57.843955    4755.904709            False
+MT-CO1        42.858361    4013.973053            False
+MT-CO3        41.990599    3889.937213            False
+MT-CO2        43.606268    3824.413532            False
+MGP            7.905974    2118.679658             True
+2026-10-18 19:39:01,642 - INFO - ========== HVG by patient ==========
+2026-10-18 19:39:01,642 - INFO - Overview of HVG 
+              means      variances  variances_norm
+count  27792.000000   27792.000000    27792.000000
+mean       0.143488      11.050679        1.039035
+std        2.067202     833.392982        0.856599
+min        0.000000       0.000000        0.000000
+25%        0.000679       0.000749        0.838980
+50%        0.009048       0.011682        0.915553
+75%        0.066179       0.092246        0.992790
+max      300.381800  120451.240627       29.019928
+2026-10-18 19:39:01,661 - INFO - Overview of Top-Ranked HVGs 
+             highly_variable  highly_variable_rank      means     variances  highly_variable_nbatches
+gene_symbol                                                                                          
+IGKC                    True                   0.5  10.738295  63354.277957                         4
+CCL19                   True                   2.0   0.819201    259.856291                         4
+IGHG1                   True                   3.0   1.107357    671.544112                         4
+IGHG4                   True                   5.0   1.258129   1009.749909                         4
+CCL21                   True                   8.5   0.355378     52.988146                         4
+JCHAIN                  True                  10.0   0.488535    181.108259                         4
+SCGB1D2                 True                  10.0   0.367663    286.858460                         3
+CXCL8                   True                  11.5   0.550243     51.969710                         4
+LYZ                     True                  12.0   0.275843     28.341242                         4
+SCGB3A1                 True                  12.0   1.105830    426.298039                         3
+COL1A1                  True                  13.5   1.560563    358.798226                         4
+CCL3                    True                  13.5   0.318522     30.945676                         4
+G0S2                    True                  17.5   0.316826     17.327753                         4
+IGLC2                   True                  17.5   3.673716  23870.116737                         4
+KRT17                   True                  17.5   0.580016     73.097351                         4
+IGHA1                   True                  18.5   1.354586   2023.633283                         4
+COL3A1                  True                  18.5   0.989015    129.930649                         4
+DCN                     True                  19.0   0.379651     21.084972                         4
+C1QA                    True                  24.0   0.095369      3.162517                         4
+IGHG3                   True                  26.0   0.540277    410.811808                         4
+2026-10-18 19:39:01,662 - INFO - Genes w/ largest Variance 
+                  means      variances  highly_variable
+gene_symbol                                            
+MALAT1       300.381800  120451.240627             True
+IGKC          10.738295   63354.277957             True
+IGLC2          3.673716   23870.116737             True
+IGLC3          1.632790    7699.834491             True
+IGLC1          1.663509    6038.590385             True
+MT-ATP6       57.843955    4755.904709            False
+MT-CO1        42.858361    4013.973053            False
+MT-CO3        41.990599    3889.937213             True
+MT-CO2        43.606268    3824.413532             True
+MGP            7.905974    2118.679658             True
+2026-10-18 19:39:10,990 - INFO - ========== HVG by sample ==========
+2026-10-18 19:39:10,998 - INFO - Overview of HVG 
+              means      variances  variances_norm
+count  27792.000000   27792.000000    27792.000000
+mean       0.143488      11.050679        0.959028
+std        2.067202     833.392982        0.661131
+min        0.000000       0.000000        0.000000
+25%        0.000679       0.000749        0.818248
+50%        0.009048       0.011682        0.884121
+75%        0.066179       0.092246        0.970022
+max      300.381800  120451.240627       18.022307
+2026-10-18 19:39:11,004 - INFO - Overview of Top-Ranked HVGs 
+             highly_variable  highly_variable_rank      means     variances  highly_variable_nbatches
+gene_symbol                                                                                          
+IGHG1                   True                   4.0   1.107357    671.544112                         8
+IGKC                    True                   5.0  10.738295  63354.277957                         8
+CCL19                   True                   6.5   0.819201    259.856291                         8
+SCGB1D2                 True                   9.0   0.367663    286.858460                         3
+LYZ                     True                  13.0   0.275843     28.341242                         8
+CCL4                    True                  14.5   0.867083     63.348898                         8
+COL1A1                  True                  14.5   1.560563    358.798226                         8
+DCN                     True                  15.0   0.379651     21.084972                         8
+G0S2                    True                  17.0   0.316826     17.327753                         8
+IGHG4                   True                  18.5   1.258129   1009.749909                         8
+FABP4                   True                  19.0   1.666393    149.342526                         8
+CCL21                   True                  23.0   0.355378     52.988146                         8
+CCL3                    True                  25.0   0.318522     30.945676                         8
+SCGB1B2P                True                  26.0   0.028854      4.462177                         1
+KRT17                   True                  26.0   0.580016     73.097351                         7
+CXCL8                   True                  26.0   0.550243     51.969710                         8
+APOE                    True                  27.0   1.169942     98.735508                         8
+GNLY                    True                  27.5   0.387964     11.552105                         8
+CCL4L2                  True                  28.0   0.234746     16.658020                         8
+LUM                     True                  28.5   0.164287      5.198018                         8
+2026-10-18 19:39:11,008 - INFO - Genes w/ largest Variance 
+                  means      variances  highly_variable
+gene_symbol                                            
+MALAT1       300.381800  120451.240627             True
+IGKC          10.738295   63354.277957             True
+IGLC2          3.673716   23870.116737             True
+IGLC3          1.632790    7699.834491             True
+IGLC1          1.663509    6038.590385             True
+MT-ATP6       57.843955    4755.904709            False
+MT-CO1        42.858361    4013.973053            False
+MT-CO3        41.990599    3889.937213            False
+MT-CO2        43.606268    3824.413532            False
+MGP            7.905974    2118.679658             True
+2026-10-18 19:39:11,018 - INFO - --- hvg_pooled vs hvg_region ---
+2026-10-18 19:39:11,018 - INFO - Shared genes: 3489
+2026-10-18 19:39:11,018 - INFO - Jaccard similarity: 0.773
+2026-10-18 19:39:11,018 - INFO - Fraction of overlapping: 87.2%
+2026-10-18 19:39:11,028 - INFO - --- hvg_pooled vs hvg_sample ---
+2026-10-18 19:39:11,028 - INFO - Shared genes: 2841
+2026-10-18 19:39:11,028 - INFO - Jaccard similarity: 0.551
+2026-10-18 19:39:11,029 - INFO - Fraction of overlapping: 71.0%
+2026-10-18 19:39:11,034 - INFO - --- hvg_pooled vs hvg_patient ---
+2026-10-18 19:39:11,034 - INFO - Shared genes: 3197
+2026-10-18 19:39:11,034 - INFO - Jaccard similarity: 0.666
+2026-10-18 19:39:11,034 - INFO - Fraction of overlapping: 79.9%
+2026-10-18 19:39:11,048 - INFO - --- hvg_region vs hvg_sample ---
+2026-10-18 19:39:11,048 - INFO - Shared genes: 2930
+2026-10-18 19:39:11,048 - INFO - Jaccard similarity: 0.578
+2026-10-18 19:39:11,049 - INFO - Fraction of overlapping: 73.2%
+2026-10-18 19:39:11,051 - INFO - --- hvg_region vs hvg_patient ---
+2026-10-18 19:39:11,051 - INFO - Shared genes: 3146
+2026-10-18 19:39:11,051 - INFO - Jaccard similarity: 0.648
+2026-10-18 19:39:11,051 - INFO - Fraction of overlapping: 78.6%
+2026-10-18 19:39:11,065 - INFO - --- hvg_sample vs hvg_patient ---
+2026-10-18 19:39:11,065 - INFO - Shared genes: 3039
+2026-10-18 19:39:11,065 - INFO - Jaccard similarity: 0.613
+2026-10-18 19:39:11,065 - INFO - Fraction of overlapping: 76.0%
+2026-10-18 19:39:11,449 - INFO - [9] Most abundant genes
+2026-10-18 19:39:11,495 - INFO - Highly Abundant Genes 
+   gene  total_counts  pct_total_counts
+ MALAT1    21247808.0          7.532475
+MT-ATP6     4091650.0          1.450514
+ MT-CO2     3084533.0          1.093485
+ MT-CO1     3031629.0          1.074731
+ MT-CO3     2970247.0          1.052970
+ MT-CYB     2488031.0          0.882022
+ MT-ND4     2318795.0          0.822027
+ MT-ND3     2009489.0          0.712376
+  RPLP1     1703785.0          0.604002
+  RPL13     1677144.0          0.594558
+ MT-ND1     1616706.0          0.573132
+    B2M     1589364.0          0.563439
+  RPS18     1573326.0          0.557754
+  RPL10     1571423.0          0.557079
+ MT-ND2     1533823.0          0.543749
+2026-10-18 19:39:14,059 - INFO - [10] PCA for random sampling
+2026-10-18 19:39:18,343 - INFO - [11] Random sampling
+2026-10-18 19:39:18,345 - INFO - Selecting 3,106 barcodes per sample
+2026-10-18 19:41:34,281 - INFO - Check balanced data
+sample
+P2_L    3106
+P2_T    3106
+P3_L    3106
+P3_T    3106
+P6_L    3106
+P6_T    3106
+P7_L    3106
+P7_T    3106
+2026-10-18 19:41:34,281 - INFO - [11] Data scaling
+2026-10-18 19:41:50,003 - INFO - [12] Dimensionality reduction pre batch correction (UMAP)
+2026-10-18 19:42:24,727 - INFO - [13] Batch correction
+2026-10-18 19:42:24,744 - INFO - Running Harmony (PyTorch on cpu)
+2026-10-18 19:42:24,745 - INFO -   Parameters:
+2026-10-18 19:42:24,745 - INFO -     max_iter_harmony: 10
+2026-10-18 19:42:24,745 - INFO -     max_iter_kmeans: 20
+2026-10-18 19:42:24,746 - INFO -     epsilon_cluster: 1e-05
+2026-10-18 19:42:24,746 - INFO -     epsilon_harmony: 0.0001
+2026-10-18 19:42:24,747 - INFO -     nclust: 100
+2026-10-18 19:42:24,748 - INFO -     block_size: 0.05
+2026-10-18 19:42:24,749 - INFO -     lamb: [1. 1. 1. 1. 1. 1. 1. 1.]
+2026-10-18 19:42:24,749 - INFO -     theta: [2. 2. 2. 2. 2. 2. 2. 2.]
+2026-10-18 19:42:24,749 - INFO -     sigma: [0.1 0.1 0.1 0.1 0.1]...
+2026-10-18 19:42:24,749 - INFO -     verbose: True
+2026-10-18 19:42:24,749 - INFO -     random_state: 0
+2026-10-18 19:42:24,752 - INFO -   Data: 50 PCs × 24848 cells
+2026-10-18 19:42:24,752 - INFO -   Batch variables: ['sample']
+2026-10-18 19:42:24,898 - INFO - Computing initial centroids with sklearn.KMeans...
+2026-10-18 19:42:25,566 - INFO - KMeans initialization complete.
+2026-10-18 19:42:25,666 - INFO - Iteration 1 of 10
+2026-10-18 19:42:27,074 - INFO - Iteration 2 of 10
+2026-10-18 19:42:28,969 - INFO - Iteration 3 of 10
+2026-10-18 19:42:31,946 - INFO - Iteration 4 of 10
+2026-10-18 19:42:34,584 - INFO - Iteration 5 of 10
+2026-10-18 19:42:36,751 - INFO - Converged after 5 iterations
+2026-10-18 19:42:36,753 - INFO - [14] Generating metadata QC plots
+2026-10-18 19:42:38,695 - INFO - [15] Generating grouped QC plots
+2026-10-18 19:42:48,408 - INFO - [16] Generating QC relationship plots
+2026-10-18 19:42:54,183 - INFO - [17] Dimensionality reduction
+2026-10-18 19:42:54,185 - INFO - [17A] PCA
+2026-10-18 19:43:37,326 - INFO - [17B] UMAP
+2026-10-18 19:44:03,989 - INFO - [18] Saving adata object as .h5 file
+2026-10-18 19:45:25,339 - INFO - ------------ Completed Preprocessing ------------

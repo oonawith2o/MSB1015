@@ -258,7 +258,7 @@ for res in RESOLUTIONS:
         random_state=SEED
     )
 
-sc.tl.umap(adata, min_dist=0.01, random_state=SEED)
+sc.tl.umap(adata, random_state=SEED)
 
 sc.pl.umap(
     adata,
@@ -280,6 +280,9 @@ logger.info(
     stability
 )
 
+x_min = float(input("Clustering Phase I - Stability - xmin (float): "))
+x_max = float(input("Clustering Phase I - Stability - xmax (float): "))
+
 fig = plt.figure(figsize=(10,4))
 plt.plot(
     stability["res_high"],
@@ -295,7 +298,7 @@ plt.plot(
     marker="o",
     label="Normalized Mutual Information (NMI)"
 )
-plt.axvspan(0.4, 0.5, alpha=0.1, color=COLOR_PALETTE_2[1], label="Selected Resolution Range")
+plt.axvspan(x_min, x_max, alpha=0.1, color=COLOR_PALETTE_2[1], label="Selected Resolution Range")
 plt.xlabel("Higher Resolution", fontsize=14, labelpad=10)
 plt.ylabel("Adjusted Rand Index (ARI)", fontsize=14, labelpad=10)
 plt.title("Leiden Resolution Sensitivity")
@@ -372,8 +375,10 @@ plot.savefig(fig, CLUSTERING_DIR / "leiden_resolution_seed_stability.jpg")
 # MARKER GENE CLUSTER INVESTIGATION ------------------------------------
 logger.info("[3C] Marker gene cluster investigation")
 
+res = input("Chosen Resolution (x.xx): ")
+
 # select leiden resolution 
-selected_resolution = 'leiden_res_0.50'
+selected_resolution = f'leiden_res_{res}'
 
 # immune and non-immune cell annotation 
 adata.var["immune_marker"] = (adata.var_names.isin(IMMUNE_MARKERS))
@@ -522,6 +527,9 @@ logger.info(
     stability
 )
 
+x_min = float(input("Clustering Phase II - Stability - xmin (float): "))
+x_max = float(input("Clustering Phase II - Stability - xmax (float): "))
+
 fig = plt.figure(figsize=(8,4))
 plt.plot(
     stability["res_high"],
@@ -535,7 +543,7 @@ plt.plot(
     color=MAIN_COLOR,
     marker="o"
 )
-plt.axvspan(0.4, 0.6, alpha=0.1, color=COLOR_PALETTE_2[1])
+plt.axvspan(x_min, x_max, alpha=0.1, color=COLOR_PALETTE_2[1])
 plt.xlabel("Higher Resolution", fontsize=14, labelpad=10)
 plt.ylabel("Adjusted Rand Index (ARI)", fontsize=14, labelpad=10)
 plt.title("Leiden Resolution Sensitivity")
@@ -608,8 +616,10 @@ plot.savefig(fig, CLUSTERING_DIR / "leiden_refined_resolution_seed_stability.jpg
 # MARKER GENE CLUSTER INVESTIGATION------------------------------------
 logger.info("[4C] Marker gene cluster investigation")
 
+res = float(input("Chosen Resolution (x.xx): "))
+
 # select leiden resolution 
-selected_resolution = 'leiden_refined_res_0.60'
+selected_resolution = f"leiden_refined_res_{res:4.2f}"
 
 # immune and non-immune cell annotation 
 adata_subset.var["immune_marker"] = (adata_subset.var_names.isin(IMMUNE_MARKERS))
@@ -686,17 +696,6 @@ ctypes_dict = ranked_groups.groupby("group").head(n_ctypes).groupby("group")["na
 logger.info(
     "Cell annotation \n%s",
     ctypes_dict
-)
-
-immune_clusters = {
-    cluster: cells
-    for cluster, cells in ctypes_dict.items()
-    if any(cell in IMMUNE_CELLS for cell in cells)
-}
-
-logger.info(
-    "Immune-specific clusters \n%s",
-    immune_clusters
 )
 
 sc.pl.matrixplot(
@@ -856,6 +855,28 @@ plot.savefig(fig, CLUSTERING_DIR / "leiden_refine_cluster_marker_gene_dotplot.jp
 
 logger.info("[7] Assigning cell-types ")
 
+clusters = sorted(
+    adata_deg.obs[selected_resolution].astype(str).unique(),
+    key=int
+)
+
+cell_type_map = {}
+
+for cluster in clusters:
+    cell_type = input(f"Enter cell type for cluster {cluster}: ")
+    cell_type_map[cluster] = cell_type.strip()
+
+adata_deg.obs[f"{selected_resolution}_original"] = (
+    adata_deg.obs[selected_resolution].astype(str)
+)
+
+adata_deg.obs["cell_type"] = (
+    adata_deg.obs[f"{selected_resolution}_original"]
+    .map(cell_type_map)
+    .fillna("Unknown")
+)
+
+'''
 cell_type_map = {
     "0": "Plasma cells",
     "1": "Unresolved immune-cell population",
@@ -876,6 +897,7 @@ adata_deg.obs["cell_type"] = (
     .map(cell_type_map)
     .fillna("Unknown")
 )
+'''
 
 adata_deg.obs[
     [f"{selected_resolution}_original", "cell_type"]
